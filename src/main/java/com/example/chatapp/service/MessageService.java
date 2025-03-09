@@ -9,6 +9,7 @@ import com.example.chatapp.dto.MessageRequestDTO;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
+import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.repository.UserRepository;
@@ -29,6 +30,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
 
     private static final int MAX_MESSAGE_LENGTH = 1000;
 
@@ -56,8 +58,8 @@ public class MessageService {
         ChatRoom chatRoom = chatRoomRepository.findById(messageRequest.getChatRoomId())
                 .orElseThrow(() -> new ChatRoomException("채팅방(ID: " + messageRequest.getChatRoomId() + ")을 찾을 수 없습니다."));
 
-        // 사용자가 채팅방 참여자인지 확인
-        if (!chatRoom.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(sender.getId()))) {
+        boolean isParticipant = chatRoomParticipantRepository.existsByUserIdAndChatRoomId(sender.getId(), chatRoom.getId());
+        if (!isParticipant) {
             throw new MessageException("사용자는 이 채팅방의 참여자가 아닙니다.");
         }
 
