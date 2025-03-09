@@ -22,6 +22,7 @@ import org.springframework.stereotype.Controller;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Controller
@@ -120,7 +121,7 @@ public class ChatWebSocketController {
             Optional<User> user = userService.findUserById(userId);
 
             // 세션에서 사용자 정보 제거
-            headerAccessor.getSessionAttributes().remove("userId");
+            Objects.requireNonNull(headerAccessor.getSessionAttributes()).remove("userId");
             headerAccessor.getSessionAttributes().remove("chatRoomId");
 
             // 브로드캐스트용 메시지 생성
