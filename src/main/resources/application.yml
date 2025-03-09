@@ -1,0 +1,49 @@
+# src/main/resources/application.yml
+spring:
+  # 데이터소스 설정
+  datasource:
+    url: jdbc:h2:mem:chatdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 데이터베이스 콘솔 설정
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA 설정
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: off
+    properties:
+      hibernate:
+        format_sql: true
+
+  # 프로파일 설정
+  profiles:
+    active: dev
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: debug
+        type:
+          descriptor:
+            sql: trace
+
+# 서버 포트 설정
+server:
+  port: 8080
+
+# 애플리케이션 커스텀 설정
+chat:
+  websocket:
+    endpoint: /ws
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080
