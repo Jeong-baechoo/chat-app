@@ -2,6 +2,7 @@ package com.example.chatapp.controller;
 
 import com.example.chatapp.domain.User;
 import com.example.chatapp.domain.UserStatus;
+import com.example.chatapp.dto.UserDTO;
 import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,24 +19,27 @@ public class UserController {
 
     // 사용자 생성
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        User createdUser = userService.createUser(user);
-        return ResponseEntity.ok(createdUser);
+    public ResponseEntity<UserDTO> createUser(@RequestBody User user) {
+        UserDTO newUser = userService.createUser(user);
+        return ResponseEntity.ok(newUser);
     }
 
     // 모든 사용자 조회
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.findAllUsers();
-        return ResponseEntity.ok(users);
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<UserDTO> allUsers = userService.findAllUsers();
+        return ResponseEntity.ok(allUsers);
     }
 
     // 특정 사용자 조회
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
-        Optional<User> user = userService.findUserById(id);
-        return user.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+        try {
+            UserDTO userDTO = userService.findUserById(id);
+            return ResponseEntity.ok(userDTO);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     // 사용자명으로 조회

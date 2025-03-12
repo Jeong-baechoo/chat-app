@@ -5,7 +5,6 @@ import com.example.chatapp.dto.MessageRequestDTO;
 import com.example.chatapp.domain.MessageStatus;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.service.MessageService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,8 +27,14 @@ public class MessageController {
      * 메시지 전송
      */
     @PostMapping
-    public ResponseEntity<MessageDTO> sendMessage(@Valid @RequestBody MessageRequestDTO requestDTO) {
-        log.debug("메시지 전송 API 요청: {}", requestDTO);
+    public ResponseEntity<MessageDTO> sendMessage(MessageRequestDTO requestDTO) {
+        if (requestDTO.getSenderId() == null) {
+            throw new MessageException("발신자 ID는 null일 수 없습니다.");
+        }
+
+        if (requestDTO.getChatRoomId() == null) {
+            throw new MessageException("채팅방 ID는 null일 수 없습니다.");
+        }
         MessageDTO sentMessage = messageService.sendMessage(requestDTO);
         return ResponseEntity.ok(sentMessage);
     }

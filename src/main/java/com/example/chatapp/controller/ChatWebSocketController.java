@@ -1,12 +1,11 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.domain.User;
 import com.example.chatapp.dto.MessageDTO;
 import com.example.chatapp.dto.MessageRequestDTO;
+import com.example.chatapp.dto.UserDTO;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
-import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.MessageService;
 import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 @Controller
 @RequiredArgsConstructor
@@ -36,11 +34,14 @@ public class ChatWebSocketController {
     /**
      * 메시지 전송 처리
      */
-    @MessageMapping("/chat.send")
+    @MessageMapping("/chat.send") // 클라이언트에서 "/app/chat.send"로 메시지를 전송하면 이 메서드가 호출됨
     public void sendMessage(@Payload MessageRequestDTO requestDTO) {
         log.debug("메시지 전송 요청: {}", requestDTO);
 
         try {
+            if (requestDTO.getSenderId() == null || requestDTO.getChatRoomId() == null) {
+                throw new IllegalArgumentException("senderId와 chatRoomId는 필수 값입니다.");
+            }
             // 메시지 저장 및 DTO로 변환
             MessageDTO messageDTO = messageService.sendMessage(requestDTO);
 
@@ -55,7 +56,7 @@ public class ChatWebSocketController {
 
             // 채팅방에 메시지 브로드캐스트
             messagingTemplate.convertAndSend(
-                    "/topic/chat/" + requestDTO.getChatRoomId(),
+                    "/topic/chat/" + requestDTO.getChatRoomId(), // "/topic/chat/{chatRoomId}"로 메시지를 전송
                     broadcastMessage
             );
 
@@ -70,16 +71,13 @@ public class ChatWebSocketController {
      * 사용자 입장 처리
      */
     @MessageMapping("/chat.addUser")
-    public void addUser(
-            @Payload Map<String, Object> payload,
-            SimpMessageHeaderAccessor headerAccessor
-    ) {
+    public void addUser(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) {
         try {
             Long userId = Long.valueOf(payload.get("userId").toString());
             Long chatRoomId = Long.valueOf(payload.get("chatRoomId").toString());
 
             // 사용자 정보 조회
-            Optional<User> user = userService.findUserById(userId);
+            UserDTO user = userService.findUserById(userId);
 
             // 세션에 사용자 정보 저장
             headerAccessor.getSessionAttributes().put("userId", userId);
@@ -90,13 +88,11 @@ public class ChatWebSocketController {
             joinMessage.put("type", "JOIN");
             joinMessage.put("sender", user);
             joinMessage.put("chatRoomId", chatRoomId);
+            joinMessage.put("content", user.getUsername() + "님이 채팅방에 입장했습니다.");
             joinMessage.put("timestamp", LocalDateTime.now().toString());
 
             // 채팅방에 입장 메시지 브로드캐스트
-            messagingTemplate.convertAndSend(
-                    "/topic/chat/" + chatRoomId,
-                    joinMessage
-            );
+            messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, joinMessage);
 
             log.info("사용자 입장: userId={}, chatRoomId={}", userId, chatRoomId);
         } catch (Exception e) {
@@ -118,7 +114,7 @@ public class ChatWebSocketController {
             Long chatRoomId = Long.valueOf(payload.get("chatRoomId").toString());
 
             // 사용자 정보 조회
-            Optional<User> user = userService.findUserById(userId);
+            UserDTO user = userService.findUserById(userId);
 
             // 세션에서 사용자 정보 제거
             Objects.requireNonNull(headerAccessor.getSessionAttributes()).remove("userId");

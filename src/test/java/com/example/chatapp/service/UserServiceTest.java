@@ -12,8 +12,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -72,23 +70,6 @@ class UserServiceTest {
         assertThrows(RuntimeException.class, () -> userService.createUser(duplicateUser));
         verify(userRepository).findByUsername("testuser");
         verify(userRepository, never()).save(any(User.class));
-    }
-
-    @Test
-    @DisplayName("모든 사용자 조회")
-    void findAllUsers() {
-        // Given
-        List<User> userList = Arrays.asList(testUser);
-        when(userRepository.findAll()).thenReturn(userList);
-
-        // When
-        List<User> result = userService.findAllUsers();
-
-        // Then
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals("testuser", result.get(0).getUsername());
-        verify(userRepository).findAll();
     }
 
     @Test

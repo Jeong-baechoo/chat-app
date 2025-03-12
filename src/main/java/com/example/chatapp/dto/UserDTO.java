@@ -1,19 +1,18 @@
 package com.example.chatapp.dto;
 
 import com.example.chatapp.domain.User;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.example.chatapp.domain.UserStatus;
+import lombok.*;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Setter
 @Builder
 public class UserDTO {
     private Long id;
     private String username;
-    private String status;
+    private UserStatus status;
 
     /**
      * User 엔티티를 UserDTO로 변환하는 정적 메서드
@@ -22,7 +21,7 @@ public class UserDTO {
         return UserDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .status(user.getStatus() != null ? user.getStatus().toString() : null)
+                .status(user.getStatus())
                 .build();
     }
 }

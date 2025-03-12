@@ -1,9 +1,12 @@
 package com.example.chatapp.dto;
 
+import com.example.chatapp.domain.ParticipantRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -12,6 +15,6 @@ import lombok.NoArgsConstructor;
 class ParticipantDTO {
     private Long userId;
     private String username;
-    private Object role; // ParticipantRole enum
-    private Object joinedAt; // LocalDateTime
+    private ParticipantRole role; // ParticipantRole enum
+    private LocalDateTime joinedAt; // LocalDateTime
 }
