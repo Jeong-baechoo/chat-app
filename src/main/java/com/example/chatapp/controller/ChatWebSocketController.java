@@ -1,13 +1,13 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.dto.MessageDTO;
-import com.example.chatapp.dto.MessageRequestDTO;
-import com.example.chatapp.dto.UserDTO;
+import com.example.chatapp.dto.request.MessageCreateRequest;
+import com.example.chatapp.dto.response.MessageResponse;
+import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
-import com.example.chatapp.service.MessageService;
-import com.example.chatapp.service.UserService;
+import com.example.chatapp.service.impl.UserServiceImpl;
+import com.example.chatapp.service.impl.MessageServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
@@ -27,15 +27,15 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatWebSocketController {
-    private final UserService userService;
+    private final UserServiceImpl userServiceImpl;
     private final SimpMessagingTemplate messagingTemplate;
-    private final MessageService messageService;
+    private final MessageServiceImpl messageServiceImpl;
 
     /**
      * 메시지 전송 처리
      */
     @MessageMapping("/chat.send") // 클라이언트에서 "/app/chat.send"로 메시지를 전송하면 이 메서드가 호출됨
-    public void sendMessage(@Payload MessageRequestDTO requestDTO) {
+    public void sendMessage(@Payload MessageCreateRequest requestDTO) {
         log.debug("메시지 전송 요청: {}", requestDTO);
 
         try {
@@ -43,7 +43,7 @@ public class ChatWebSocketController {
                 throw new IllegalArgumentException("senderId와 chatRoomId는 필수 값입니다.");
             }
             // 메시지 저장 및 DTO로 변환
-            MessageDTO messageDTO = messageService.sendMessage(requestDTO);
+            MessageResponse messageDTO = messageServiceImpl.sendMessage(requestDTO);
 
             // 브로드캐스트용 메시지 생성
             Map<String, Object> broadcastMessage = new HashMap<>();
@@ -77,7 +77,7 @@ public class ChatWebSocketController {
             Long chatRoomId = Long.valueOf(payload.get("chatRoomId").toString());
 
             // 사용자 정보 조회
-            UserDTO user = userService.findUserById(userId);
+            UserResponse user = userServiceImpl.findUserById(userId);
 
             // 세션에 사용자 정보 저장
             headerAccessor.getSessionAttributes().put("userId", userId);
@@ -114,7 +114,7 @@ public class ChatWebSocketController {
             Long chatRoomId = Long.valueOf(payload.get("chatRoomId").toString());
 
             // 사용자 정보 조회
-            UserDTO user = userService.findUserById(userId);
+            UserResponse user = userServiceImpl.findUserById(userId);
 
             // 세션에서 사용자 정보 제거
             Objects.requireNonNull(headerAccessor.getSessionAttributes()).remove("userId");

@@ -1,10 +1,11 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.dto.MessageDTO;
-import com.example.chatapp.dto.MessageRequestDTO;
-import com.example.chatapp.domain.MessageStatus;
+import com.example.chatapp.dto.request.MessageCreateRequest;
+import com.example.chatapp.dto.request.MessageStatusUpdateRequest;
+import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.service.MessageService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,27 +28,21 @@ public class MessageController {
      * 메시지 전송
      */
     @PostMapping
-    public ResponseEntity<MessageDTO> sendMessage(MessageRequestDTO requestDTO) {
-        if (requestDTO.getSenderId() == null) {
-            throw new MessageException("발신자 ID는 null일 수 없습니다.");
-        }
-
-        if (requestDTO.getChatRoomId() == null) {
-            throw new MessageException("채팅방 ID는 null일 수 없습니다.");
-        }
-        MessageDTO sentMessage = messageService.sendMessage(requestDTO);
-        return ResponseEntity.ok(sentMessage);
+    public ResponseEntity<MessageResponse> sendMessage(
+            @Valid @RequestBody MessageCreateRequest request) {
+        MessageResponse response = messageService.sendMessage(request);
+        return ResponseEntity.ok(response);
     }
 
     /**
      * 특정 채팅방의 메시지 목록 조회 (페이지네이션)
      */
     @GetMapping("/chat-room/{chatRoomId}")
-    public ResponseEntity<Page<MessageDTO>> getMessagesByChatRoom(
+    public ResponseEntity<Page<MessageResponse>> getMessagesByChatRoom(
             @PathVariable Long chatRoomId,
             @PageableDefault(size = 20) Pageable pageable) {
         log.debug("채팅방 메시지 조회 API 요청: chatRoomId={}", chatRoomId);
-        Page<MessageDTO> messages = messageService.getChatRoomMessages(chatRoomId, pageable);
+        Page<MessageResponse> messages = messageService.getChatRoomMessages(chatRoomId, pageable);
         return ResponseEntity.ok(messages);
     }
 
@@ -55,11 +50,11 @@ public class MessageController {
      * 특정 채팅방의 최근 메시지 조회 (제한된 개수)
      */
     @GetMapping("/chat-room/{chatRoomId}/recent")
-    public ResponseEntity<List<MessageDTO>> getRecentMessagesByChatRoom(
+    public ResponseEntity<List<MessageResponse>> getRecentMessagesByChatRoom(
             @PathVariable Long chatRoomId,
             @RequestParam(defaultValue = "50") int limit) {
         log.debug("채팅방 최근 메시지 조회 API 요청: chatRoomId={}, limit={}", chatRoomId, limit);
-        List<MessageDTO> messages = messageService.getRecentChatRoomMessages(chatRoomId, limit);
+        List<MessageResponse> messages = messageService.getRecentChatRoomMessages(chatRoomId, limit);
         return ResponseEntity.ok(messages);
     }
 
@@ -67,10 +62,10 @@ public class MessageController {
      * 특정 메시지 조회
      */
     @GetMapping("/{id}")
-    public ResponseEntity<MessageDTO> getMessageById(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> getMessageById(@PathVariable Long id) {
         log.debug("메시지 ID 조회 API 요청: id={}", id);
         try {
-            MessageDTO message = messageService.findMessageById(id);
+            MessageResponse message = messageService.findMessageById(id);
             return ResponseEntity.ok(message);
         } catch (MessageException e) {
             log.warn("메시지 조회 실패: {}", e.getMessage());
@@ -82,13 +77,14 @@ public class MessageController {
      * 메시지 상태 업데이트
      */
     @PatchMapping("/{id}/status")
-    public ResponseEntity<MessageDTO> updateMessageStatus(
+    public ResponseEntity<MessageResponse> updateMessageStatus(
             @PathVariable Long id,
-            @RequestParam MessageStatus status,
-            @RequestParam Long userId) {
-        log.debug("메시지 상태 업데이트 API 요청: id={}, status={}, userId={}", id, status, userId);
+            @Valid @RequestBody MessageStatusUpdateRequest request) {
+        log.debug("메시지 상태 업데이트 API 요청: id={}, status={}, userId={}",
+                id, request.getStatus(), request.getUserId());
         try {
-            MessageDTO updatedMessage = messageService.updateMessageStatus(id, userId, status);
+            MessageResponse updatedMessage = messageService.updateMessageStatus(
+                    id, request.getUserId(), request.getStatus());
             return ResponseEntity.ok(updatedMessage);
         } catch (MessageException e) {
             log.warn("메시지 상태 업데이트 실패: {}", e.getMessage());
@@ -100,16 +96,16 @@ public class MessageController {
      * 특정 사용자가 보낸 메시지 조회
      */
     @GetMapping("/sender/{senderId}")
-    public ResponseEntity<Page<MessageDTO>> getMessagesBySender(
+    public ResponseEntity<Page<MessageResponse>> getMessagesBySender(
             @PathVariable Long senderId,
             @PageableDefault(size = 20) Pageable pageable) {
         log.debug("발신자 메시지 조회 API 요청: senderId={}", senderId);
-        Page<MessageDTO> messages = messageService.getMessagesBySender(senderId, pageable);
+        Page<MessageResponse> messages = messageService.getMessagesBySender(senderId, pageable);
         return ResponseEntity.ok(messages);
     }
 
     /**
-     * 메시지 삭제 (소프트 삭제)
+     * 메시지 삭제
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMessage(

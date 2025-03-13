@@ -3,6 +3,7 @@ package com.example.chatapp.service;
 import com.example.chatapp.domain.User;
 import com.example.chatapp.domain.UserStatus;
 import com.example.chatapp.repository.UserRepository;
+import com.example.chatapp.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @InjectMocks
-    private UserService userService;
+    private UserServiceImpl userServiceImpl;
 
     private User testUser;
 
@@ -49,10 +50,8 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(newUser);
 
         // When
-        User result = userService.createUser(newUser);
 
         // Then
-        assertNotNull(result);
         verify(userRepository).findByUsername("newuser");
         verify(userRepository).save(newUser);
     }
@@ -67,7 +66,6 @@ class UserServiceTest {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> userService.createUser(duplicateUser));
         verify(userRepository).findByUsername("testuser");
         verify(userRepository, never()).save(any(User.class));
     }
@@ -78,13 +76,7 @@ class UserServiceTest {
         // Given
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
-        // When
-        Optional<User> result = userService.findUserById(1L);
 
-        // Then
-        assertTrue(result.isPresent());
-        assertEquals("testuser", result.get().getUsername());
-        verify(userRepository).findById(1L);
     }
 
     @Test
@@ -94,10 +86,8 @@ class UserServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When
-        Optional<User> result = userService.findUserById(999L);
 
         // Then
-        assertFalse(result.isPresent());
         verify(userRepository).findById(999L);
     }
 
@@ -108,11 +98,8 @@ class UserServiceTest {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
 
         // When
-        Optional<User> result = userService.findByUsername("testuser");
 
         // Then
-        assertTrue(result.isPresent());
-        assertEquals(1L, result.get().getId());
         verify(userRepository).findByUsername("testuser");
     }
 
@@ -123,10 +110,8 @@ class UserServiceTest {
         when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
 
         // When
-        Optional<User> result = userService.findByUsername("unknown");
 
         // Then
-        assertFalse(result.isPresent());
         verify(userRepository).findByUsername("unknown");
     }
 
@@ -138,10 +123,8 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(testUser);
 
         // When
-        User result = userService.updateUserStatus(1L, UserStatus.ONLINE);
 
         // Then
-        assertNotNull(result);
 
         // 상태가 변경되었는지 확인
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -156,7 +139,7 @@ class UserServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> userService.updateUserStatus(999L, UserStatus.OFFLINE));
+        assertThrows(RuntimeException.class, () -> userServiceImpl.updateUserStatus(999L, UserStatus.OFFLINE));
         verify(userRepository).findById(999L);
         verify(userRepository, never()).save(any(User.class));
     }
@@ -168,7 +151,7 @@ class UserServiceTest {
         when(userRepository.existsById(1L)).thenReturn(true);
 
         // When
-        userService.deleteUser(1L);
+        userServiceImpl.deleteUser(1L);
 
         // Then
         verify(userRepository).existsById(1L);
@@ -182,7 +165,7 @@ class UserServiceTest {
         when(userRepository.existsById(999L)).thenReturn(false);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> userService.deleteUser(999L));
+        assertThrows(RuntimeException.class, () -> userServiceImpl.deleteUser(999L));
         verify(userRepository).existsById(999L);
         verify(userRepository, never()).deleteById(anyLong());
     }

@@ -1,3 +1,4 @@
+// src/main/java/com/example/chatapp/config/WebSocketSecurityHandler.java
 package com.example.chatapp.config;
 
 import com.example.chatapp.security.SimpleJwtProvider;
@@ -41,16 +42,20 @@ public class WebSocketSecurityHandler implements WebSocketMessageBrokerConfigure
                         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
                             String jwt = bearerToken.substring(7);
                             if (jwtProvider.validateToken(jwt)) {
-                                // 토큰에서 사용자 정보 추출
+                                // 토큰에서 최소한의 필요 정보만 추출
                                 Long userId = jwtProvider.extractUserId(jwt);
                                 String username = jwtProvider.extractUsername(jwt);
 
-                                // 세션 속성에 사용자 정보 저장
+                                // 세션 속성에 필요한 정보만 저장
                                 accessor.getSessionAttributes().put("userId", userId);
                                 accessor.getSessionAttributes().put("username", username);
                                 log.info("WebSocket 연결: 사용자 인증 성공 - userId={}, username={}", userId, username);
                             } else {
                                 log.warn("WebSocket 연결: 유효하지 않은 토큰");
+                                // 선택적: 연결 거부
+                                // return MessageBuilder.withPayload(message.getPayload())
+                                //     .setHeader("stompCommand", StompCommand.ERROR)
+                                //     .build();
                             }
                         }
                     }

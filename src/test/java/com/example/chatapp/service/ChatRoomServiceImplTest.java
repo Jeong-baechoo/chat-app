@@ -1,12 +1,14 @@
 package com.example.chatapp.service;
 
 import com.example.chatapp.domain.*;
-import com.example.chatapp.dto.ChatRoomCreateDTO;
-import com.example.chatapp.dto.ChatRoomDTO;
+import com.example.chatapp.dto.request.ChatRoomCreateRequest;
+import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.repository.UserRepository;
+import com.example.chatapp.service.impl.ChatRoomServiceImpl;
+import jakarta.validation.Valid;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +30,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ChatRoomServiceTest {
+class ChatRoomServiceImplTest {
 
     @Mock
     private ChatRoomRepository chatRoomRepository;
@@ -40,7 +42,7 @@ class ChatRoomServiceTest {
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
 
     @InjectMocks
-    private ChatRoomService chatRoomService;
+    private ChatRoomServiceImpl chatRoomServiceImpl;
 
     private User testUser;
     private ChatRoom testChatRoom;
@@ -75,7 +77,7 @@ class ChatRoomServiceTest {
     @DisplayName("채팅방 생성 성공")
     void createChatRoom_Success() {
         // Given
-        ChatRoomCreateDTO createDTO = new ChatRoomCreateDTO();
+        @Valid ChatRoomCreateRequest createDTO = new ChatRoomCreateRequest();
         createDTO.setName("New Chat Room");
         createDTO.setType(ChatRoomType.GROUP);
         createDTO.setCreatorId(1L);
@@ -84,7 +86,7 @@ class ChatRoomServiceTest {
         when(chatRoomRepository.save(any(ChatRoom.class))).thenReturn(testChatRoom);
 
         // When
-        ChatRoomDTO result = chatRoomService.createChatRoom(createDTO);
+        ChatRoomResponse result = chatRoomServiceImpl.createChatRoom(createDTO);
 
         // Then
         assertNotNull(result);
@@ -109,7 +111,7 @@ class ChatRoomServiceTest {
     @DisplayName("채팅방 생성 실패 - 사용자 없음")
     void createChatRoom_UserNotFound() {
         // Given
-        ChatRoomCreateDTO createDTO = new ChatRoomCreateDTO();
+        @Valid ChatRoomCreateRequest createDTO = new ChatRoomCreateRequest();
         createDTO.setName("New Chat Room");
         createDTO.setType(ChatRoomType.GROUP);
         createDTO.setCreatorId(999L);
@@ -117,7 +119,7 @@ class ChatRoomServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(UserException.class, () -> chatRoomService.createChatRoom(createDTO));
+        assertThrows(UserException.class, () -> chatRoomServiceImpl.createChatRoom(createDTO));
         verify(chatRoomRepository, never()).save(any());
     }
 
@@ -129,7 +131,7 @@ class ChatRoomServiceTest {
         when(chatRoomRepository.findAll()).thenReturn(chatRooms);
 
         // When
-        List<ChatRoomDTO> result = chatRoomService.findAllChatRooms();
+        List<ChatRoomResponse> result = chatRoomServiceImpl.findAllChatRooms();
 
         // Then
         assertNotNull(result);
@@ -145,7 +147,7 @@ class ChatRoomServiceTest {
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(testChatRoom));
 
         // When
-        Optional<ChatRoomDTO> result = chatRoomService.findChatRoomById(1L);
+        Optional<ChatRoomResponse> result = chatRoomServiceImpl.findChatRoomById(1L);
 
         // Then
         assertTrue(result.isPresent());
@@ -160,7 +162,7 @@ class ChatRoomServiceTest {
         when(chatRoomRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When
-        Optional<ChatRoomDTO> result = chatRoomService.findChatRoomById(999L);
+        Optional<ChatRoomResponse> result = chatRoomServiceImpl.findChatRoomById(999L);
 
         // Then
         assertFalse(result.isPresent());
@@ -174,7 +176,7 @@ class ChatRoomServiceTest {
         when(chatRoomParticipantRepository.findByUserId(1L)).thenReturn(participants);
 
         // When
-        List<ChatRoomDTO> result = chatRoomService.findChatRoomsByUser(1L);
+        List<ChatRoomResponse> result = chatRoomServiceImpl.findChatRoomsByUser(1L);
 
         // Then
         assertNotNull(result);
@@ -191,7 +193,7 @@ class ChatRoomServiceTest {
         when(chatRoomParticipantRepository.existsByUserIdAndChatRoomId(2L, 1L)).thenReturn(false);
 
         // When
-        ChatRoomDTO result = chatRoomService.addParticipantToChatRoom(1L, 2L);
+        ChatRoomResponse result = chatRoomServiceImpl.addParticipantToChatRoom(1L, 2L);
 
         // Then
         assertNotNull(result);
@@ -214,7 +216,7 @@ class ChatRoomServiceTest {
         when(chatRoomParticipantRepository.existsByUserIdAndChatRoomId(1L, 1L)).thenReturn(true);
 
         // When
-        ChatRoomDTO result = chatRoomService.addParticipantToChatRoom(1L, 1L);
+        ChatRoomResponse result = chatRoomServiceImpl.addParticipantToChatRoom(1L, 1L);
 
         // Then
         assertNotNull(result);
@@ -228,7 +230,7 @@ class ChatRoomServiceTest {
         when(chatRoomRepository.existsById(1L)).thenReturn(true);
 
         // When
-        chatRoomService.deleteChatRoom(1L);
+        chatRoomServiceImpl.deleteChatRoom(1L);
 
         // Then
         verify(chatRoomRepository).deleteById(1L);
@@ -241,7 +243,7 @@ class ChatRoomServiceTest {
         when(chatRoomRepository.existsById(999L)).thenReturn(false);
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> chatRoomService.deleteChatRoom(999L));
+        assertThrows(RuntimeException.class, () -> chatRoomServiceImpl.deleteChatRoom(999L));
         verify(chatRoomRepository, never()).deleteById(anyLong());
     }
 }

@@ -3,6 +3,8 @@ package com.example.chatapp.service;
 import com.example.chatapp.domain.*;
 import com.example.chatapp.dto.MessageDTO;
 import com.example.chatapp.dto.MessageRequestDTO;
+import com.example.chatapp.dto.request.MessageCreateRequest;
+import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
@@ -10,6 +12,7 @@ import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.repository.UserRepository;
+import com.example.chatapp.service.impl.MessageServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +36,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MessageServiceTest {
+class MessageServiceImplTest {
 
     @Mock
     private MessageRepository messageRepository;
@@ -48,12 +51,12 @@ class MessageServiceTest {
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
 
     @InjectMocks
-    private MessageService messageService;
+    private MessageServiceImpl messageServiceImpl;
 
     private User testUser;
     private ChatRoom testChatRoom;
     private Message testMessage;
-    private MessageRequestDTO validMessageRequest;
+    private MessageCreateRequest validMessageRequest;
 
     @BeforeEach
     void setUp() {
@@ -78,7 +81,7 @@ class MessageServiceTest {
                 .build();
 
         // 유효한 메시지 요청 DTO 설정
-        validMessageRequest = new MessageRequestDTO();
+        validMessageRequest = new MessageCreateRequest();
         validMessageRequest.setSenderId(1L);
         validMessageRequest.setChatRoomId(1L);
         validMessageRequest.setContent("테스트 메시지");
@@ -94,7 +97,7 @@ class MessageServiceTest {
         when(messageRepository.save(any(Message.class))).thenReturn(testMessage);
 
         // When
-        MessageDTO result = messageService.sendMessage(validMessageRequest);
+        MessageResponse result = messageServiceImpl.sendMessage(validMessageRequest);
 
         // Then
         assertNotNull(result);
@@ -118,13 +121,13 @@ class MessageServiceTest {
     @DisplayName("메시지 전송 실패 - 빈 메시지 내용")
     void sendMessage_EmptyContent() {
         // Given
-        MessageRequestDTO emptyRequest = new MessageRequestDTO();
+        MessageCreateRequest emptyRequest = new MessageCreateRequest();
         emptyRequest.setSenderId(1L);
         emptyRequest.setChatRoomId(1L);
         emptyRequest.setContent("");
 
         // When & Then
-        assertThrows(MessageException.class, () -> messageService.sendMessage(emptyRequest));
+        assertThrows(MessageException.class, () -> messageServiceImpl.sendMessage(emptyRequest));
         verify(messageRepository, never()).save(any());
     }
 
@@ -132,13 +135,13 @@ class MessageServiceTest {
     @DisplayName("메시지 전송 실패 - 최대 길이 초과")
     void sendMessage_ContentTooLong() {
         // Given
-        MessageRequestDTO longRequest = new MessageRequestDTO();
+        MessageCreateRequest longRequest = new MessageCreateRequest();
         longRequest.setSenderId(1L);
         longRequest.setChatRoomId(1L);
         longRequest.setContent("a".repeat(1001)); // 1001자 (최대 1000자)
 
         // When & Then
-        assertThrows(MessageException.class, () -> messageService.sendMessage(longRequest));
+        assertThrows(MessageException.class, () -> messageServiceImpl.sendMessage(longRequest));
         verify(messageRepository, never()).save(any());
     }
 
@@ -149,7 +152,7 @@ class MessageServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(UserException.class, () -> messageService.sendMessage(validMessageRequest));
+        assertThrows(UserException.class, () -> messageServiceImpl.sendMessage(validMessageRequest));
         verify(messageRepository, never()).save(any());
     }
 
@@ -161,7 +164,7 @@ class MessageServiceTest {
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(ChatRoomException.class, () -> messageService.sendMessage(validMessageRequest));
+        assertThrows(ChatRoomException.class, () -> messageServiceImpl.sendMessage(validMessageRequest));
         verify(messageRepository, never()).save(any());
     }
 
@@ -174,7 +177,7 @@ class MessageServiceTest {
         when(chatRoomParticipantRepository.existsByUserIdAndChatRoomId(1L, 1L)).thenReturn(false);
 
         // When & Then
-        assertThrows(MessageException.class, () -> messageService.sendMessage(validMessageRequest));
+        assertThrows(MessageException.class, () -> messageServiceImpl.sendMessage(validMessageRequest));
         verify(messageRepository, never()).save(any());
     }
 
@@ -191,7 +194,7 @@ class MessageServiceTest {
                 .thenReturn(messagePage);
 
         // When
-        Page<MessageDTO> result = messageService.getChatRoomMessages(1L, pageable);
+        Page<MessageResponse> result = messageServiceImpl.getChatRoomMessages(1L, pageable);
 
         // Then
         assertNotNull(result);
@@ -207,7 +210,7 @@ class MessageServiceTest {
         when(chatRoomRepository.existsById(1L)).thenReturn(false);
 
         // When & Then
-        assertThrows(ChatRoomException.class, () -> messageService.getChatRoomMessages(1L, pageable));
+        assertThrows(ChatRoomException.class, () -> messageServiceImpl.getChatRoomMessages(1L, pageable));
     }
 
     @Test
@@ -220,7 +223,7 @@ class MessageServiceTest {
                 .thenReturn(messages);
 
         // When
-        List<MessageDTO> result = messageService.getRecentChatRoomMessages(1L, 10);
+        List<MessageResponse> result = messageServiceImpl.getRecentChatRoomMessages(1L, 10);
 
         // Then
         assertNotNull(result);
@@ -235,7 +238,7 @@ class MessageServiceTest {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(testMessage));
 
         // When
-        MessageDTO result = messageService.findMessageById(1L);
+        MessageResponse result = messageServiceImpl.findMessageById(1L);
 
         // Then
         assertNotNull(result);
@@ -250,7 +253,7 @@ class MessageServiceTest {
         when(messageRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(MessageException.class, () -> messageService.findMessageById(999L));
+        assertThrows(MessageException.class, () -> messageServiceImpl.findMessageById(999L));
     }
 
     @Test
@@ -261,7 +264,7 @@ class MessageServiceTest {
         when(messageRepository.save(any(Message.class))).thenReturn(testMessage);
 
         // When
-        MessageDTO result = messageService.updateMessageStatus(1L, 1L, MessageStatus.READ);
+        MessageResponse result = messageServiceImpl.updateMessageStatus(1L, 1L, MessageStatus.READ);
 
         // Then
         assertNotNull(result);
@@ -279,7 +282,7 @@ class MessageServiceTest {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(testMessage));
 
         // When & Then
-        assertThrows(MessageException.class, () -> messageService.updateMessageStatus(1L, 2L, MessageStatus.READ));
+        assertThrows(MessageException.class, () -> messageServiceImpl.updateMessageStatus(1L, 2L, MessageStatus.READ));
         verify(messageRepository, never()).save(any());
     }
 
@@ -296,7 +299,7 @@ class MessageServiceTest {
                 .thenReturn(messagePage);
 
         // When
-        Page<MessageDTO> result = messageService.getMessagesBySender(1L, pageable);
+        Page<MessageResponse> result = messageServiceImpl.getMessagesBySender(1L, pageable);
 
         // Then
         assertNotNull(result);
@@ -311,7 +314,7 @@ class MessageServiceTest {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(testMessage));
 
         // When
-        messageService.deleteMessage(1L, 1L);
+        messageServiceImpl.deleteMessage(1L, 1L);
 
         // Then
         verify(messageRepository).delete(testMessage);
@@ -324,7 +327,7 @@ class MessageServiceTest {
         when(messageRepository.findById(1L)).thenReturn(Optional.of(testMessage));
 
         // When & Then
-        assertThrows(MessageException.class, () -> messageService.deleteMessage(1L, 2L));
+        assertThrows(MessageException.class, () -> messageServiceImpl.deleteMessage(1L, 2L));
         verify(messageRepository, never()).delete(any());
     }
 }
