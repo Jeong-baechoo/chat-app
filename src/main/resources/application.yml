@@ -47,3 +47,7 @@ chat:
     allowed-origins:
       - http://localhost:3000
       - http://localhost:8080
+
+jwt:
+  secret: vAg3uL8nH6rP2tS5qY7xZ0dC1bF4mJ9oW2eR6vT8yU0iO3pA5sD7fG9hK1lZ3mN5bV6cX8dE0fG2hI4jK6lM8nO0pQ2rS4tU6vW8
+  token-validity-in-seconds: 86400  # 토큰 유효 기간: 24시간
