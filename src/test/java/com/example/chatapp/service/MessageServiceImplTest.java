@@ -1,8 +1,6 @@
 package com.example.chatapp.service;
 
 import com.example.chatapp.domain.*;
-import com.example.chatapp.dto.MessageDTO;
-import com.example.chatapp.dto.MessageRequestDTO;
 import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.ChatRoomException;
