@@ -1,10 +1,9 @@
-// src/main/java/com/example/chatapp/controller/UserController.java
 package com.example.chatapp.controller;
 
 import com.example.chatapp.dto.request.UserCreateRequest;
 import com.example.chatapp.dto.request.UserStatusUpdateRequest;
 import com.example.chatapp.dto.response.UserResponse;
-import com.example.chatapp.service.impl.UserServiceImpl;
+import com.example.chatapp.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,62 +17,50 @@ import java.util.List;
 @RequestMapping("/api/users")
 @Slf4j
 public class UserController {
-    private final UserServiceImpl userServiceImpl;
-
-    // 사용자 생성
+    private final UserService userService;
     @PostMapping
-    public ResponseEntity<UserResponse> createUser(
-            @Valid @RequestBody UserCreateRequest request) {
-        log.debug("사용자 생성 API 요청: username={}", request.getUsername());
-        UserResponse newUser = userServiceImpl.createUser(request);
-        return ResponseEntity.ok(newUser);
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
+        log.debug("사용자 생성: {}", request.getUsername());
+        return ResponseEntity.ok(userService.createUser(request));
     }
 
-    // 모든 사용자 조회
     @GetMapping
     public ResponseEntity<List<UserResponse>> getAllUsers() {
-        log.debug("전체 사용자 조회 API 요청");
-        List<UserResponse> allUsers = userServiceImpl.findAllUsers();
-        return ResponseEntity.ok(allUsers);
+        log.debug("전체 사용자 조회");
+        return ResponseEntity.ok(userService.findAllUsers());
     }
 
-    // 특정 사용자 조회
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
-        log.debug("사용자 ID 조회 API 요청: id={}", id);
+        log.debug("사용자 조회: id={}", id);
         try {
-            UserResponse user = userServiceImpl.findUserById(id);
-            return ResponseEntity.ok(user);
+            return ResponseEntity.ok(userService.findUserById(id));
         } catch (Exception e) {
             log.warn("사용자 조회 실패: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
 
-    // 사용자명으로 조회
     @GetMapping("/username/{username}")
     public ResponseEntity<UserResponse> getUserByUsername(@PathVariable String username) {
-        log.debug("사용자명 조회 API 요청: username={}", username);
-        return userServiceImpl.findByUsername(username)
+        log.debug("사용자 조회: username={}", username);
+        return userService.findByUsername(username)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // 사용자 상태 업데이트
     @PatchMapping("/{id}/status")
     public ResponseEntity<UserResponse> updateUserStatus(
             @PathVariable Long id,
             @Valid @RequestBody UserStatusUpdateRequest request) {
-        log.debug("사용자 상태 업데이트 API 요청: id={}, status={}", id, request.getStatus());
-        UserResponse updatedUser = userServiceImpl.updateUserStatus(id, request.getStatus());
-        return ResponseEntity.ok(updatedUser);
+        log.debug("상태 업데이트: id={}, status={}", id, request.getStatus());
+        return ResponseEntity.ok(userService.updateUserStatus(id, request.getStatus()));
     }
 
-    // 사용자 삭제
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        log.debug("사용자 삭제 API 요청: id={}", id);
-        userServiceImpl.deleteUser(id);
+        log.debug("사용자 삭제: id={}", id);
+        userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
 }
