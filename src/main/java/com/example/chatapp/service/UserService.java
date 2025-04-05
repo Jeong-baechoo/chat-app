@@ -1,7 +1,6 @@
 package com.example.chatapp.service;
 
 import com.example.chatapp.domain.UserStatus;
-import com.example.chatapp.dto.request.UserCreateRequest;
 import com.example.chatapp.dto.response.UserResponse;
 
 import java.util.List;

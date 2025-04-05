@@ -3,7 +3,6 @@ package com.example.chatapp.repository;
 import com.example.chatapp.domain.ChatRoomParticipant;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.Optional;
 

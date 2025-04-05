@@ -1,9 +1,7 @@
-// src/main/java/com/example/chatapp/service/impl/UserServiceImpl.java
 package com.example.chatapp.service.impl;
 
 import com.example.chatapp.domain.User;
 import com.example.chatapp.domain.UserStatus;
-import com.example.chatapp.dto.request.UserCreateRequest;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.mapper.UserMapper;
@@ -11,7 +9,6 @@ import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

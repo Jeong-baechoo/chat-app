@@ -1,6 +1,5 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.request.MessageStatusUpdateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.MessageException;
