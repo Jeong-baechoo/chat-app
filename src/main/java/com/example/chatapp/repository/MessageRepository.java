@@ -1,6 +1,7 @@
 package com.example.chatapp.repository;
 
 import com.example.chatapp.domain.Message;
+import com.example.chatapp.domain.MessageStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,4 +26,6 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     // 발신자 ID로 메시지 조회 (페이지네이션)
     Page<Message> findBySenderIdOrderByTimestampDesc(Long senderId, Pageable pageable);
+
+    List<Message> findByStatus(MessageStatus status);
 }
