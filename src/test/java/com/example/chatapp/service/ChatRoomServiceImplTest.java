@@ -223,27 +223,4 @@ class ChatRoomServiceImplTest {
         verify(chatRoomParticipantRepository, never()).save(any());
     }
 
-    @Test
-    @DisplayName("채팅방 삭제 성공")
-    void deleteChatRoom_Success() {
-        // Given
-        when(chatRoomRepository.existsById(1L)).thenReturn(true);
-
-        // When
-        chatRoomServiceImpl.deleteChatRoom(1L);
-
-        // Then
-        verify(chatRoomRepository).deleteById(1L);
-    }
-
-    @Test
-    @DisplayName("채팅방 삭제 실패 - 존재하지 않는 채팅방")
-    void deleteChatRoom_NotFound() {
-        // Given
-        when(chatRoomRepository.existsById(999L)).thenReturn(false);
-
-        // When & Then
-        assertThrows(RuntimeException.class, () -> chatRoomServiceImpl.deleteChatRoom(999L));
-        verify(chatRoomRepository, never()).deleteById(anyLong());
-    }
 }

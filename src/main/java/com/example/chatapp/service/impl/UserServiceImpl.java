@@ -25,29 +25,6 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final PasswordEncoder passwordEncoder;
-
-    @Override
-    @Transactional
-    public UserResponse createUser(UserCreateRequest request) {
-        // 중복 사용자명 체크
-        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new UserException("이미 존재하는 사용자명입니다.");
-        }
-
-        // 사용자 엔티티 생성
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .status(UserStatus.OFFLINE)
-                .build();
-
-        // 저장 및 응답
-        User savedUser = userRepository.save(user);
-        log.debug("사용자 생성 완료: id={}, username={}", savedUser.getId(), savedUser.getUsername());
-
-        return userMapper.toResponse(savedUser);
-    }
 
     @Override
     @Transactional(readOnly = true)

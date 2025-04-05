@@ -3,6 +3,7 @@ package com.example.chatapp.controller;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.request.ChatRoomJoinRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
+import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.service.ChatRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,67 +15,93 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/chat-rooms")
+@RequestMapping("/api/rooms")
 @Slf4j
 public class ChatRoomController {
     private final ChatRoomService chatRoomService;
 
+    /**
+     * 전체 채팅방 목록 조회
+     */
+    @GetMapping
+    public ResponseEntity<List<ChatRoomResponse>> getAllRooms() {
+        log.debug("전체 채팅방 조회 API 요청");
+        List<ChatRoomResponse> response = chatRoomService.findAllChatRooms();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 현재 사용자가 참여한 채팅방 목록 조회
+     */
+    @GetMapping("/me")
+    public ResponseEntity<List<ChatRoomResponse>> getMyRooms(@RequestParam Long userId) {
+        log.debug("사용자별 채팅방 조회 API 요청: userId={}", userId);
+        List<ChatRoomResponse> response = chatRoomService.findChatRoomsByUser(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 특정 채팅방 상세 정보 조회
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ChatRoomResponse> getRoomById(@PathVariable Long id) {
+        log.debug("채팅방 상세 조회 API 요청: id={}", id);
+        return chatRoomService.findChatRoomById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * 채팅방 생성
+     */
     @PostMapping
-    public ResponseEntity<ChatRoomResponse> createChatRoom(@Valid @RequestBody ChatRoomCreateRequest request) {
-        log.debug("채팅방 생성: name={}, type={}, creatorId={}", request.getName(), request.getType(), request.getCreatorId());
+    public ResponseEntity<ChatRoomResponse> createRoom(
+            @Valid @RequestBody ChatRoomCreateRequest request) {
+        log.debug("채팅방 생성 API 요청: name={}, type={}, creatorId={}",
+                request.getName(), request.getType(), request.getCreatorId());
         try {
-            return ResponseEntity.ok(chatRoomService.createChatRoom(request));
+            ChatRoomResponse response = chatRoomService.createChatRoom(request);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.warn("채팅방 생성 실패: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<ChatRoomResponse>> getChatRoomsByUser(@PathVariable Long userId) {
-        log.debug("사용자별 채팅방 조회: userId={}", userId);
+    /**
+     * 채팅방 참여
+     */
+    @PostMapping("/{id}/join")
+    public ResponseEntity<ChatRoomResponse> joinRoom(
+            @PathVariable Long id,
+            @Valid @RequestBody ChatRoomJoinRequest request) {
+        log.debug("채팅방 참여 API 요청: roomId={}, userId={}", id, request.getUserId());
+
         try {
-            return ResponseEntity.ok(chatRoomService.findChatRoomsByUser(userId));
-        } catch (Exception e) {
-            log.warn("사용자별 채팅방 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @GetMapping
-    public ResponseEntity<List<ChatRoomResponse>> getAllChatRooms() {
-        log.debug("전체 채팅방 조회");
-        return ResponseEntity.ok(chatRoomService.findAllChatRooms());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ChatRoomResponse> getChatRoomById(@PathVariable Long id) {
-        log.debug("채팅방 조회: id={}", id);
-        return chatRoomService.findChatRoomById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/{chatRoomId}/join")
-    public ResponseEntity<ChatRoomResponse> joinChatRoom(@PathVariable Long chatRoomId, @Valid @RequestBody ChatRoomJoinRequest request) {
-        log.debug("채팅방 참여: chatRoomId={}, userId={}", chatRoomId, request.getUserId());
-        try {
-            return ResponseEntity.ok(chatRoomService.addParticipantToChatRoom(chatRoomId, request.getUserId()));
+            ChatRoomResponse response = chatRoomService.addParticipantToChatRoom(id, request.getUserId());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.warn("채팅방 참여 실패: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
 
+    /**
+     * 채팅방 삭제
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteChatRoom(@PathVariable Long id) {
-        log.debug("채팅방 삭제: id={}", id);
+    public ResponseEntity<Void> deleteRoom(
+            @PathVariable Long id,
+            @RequestParam Long userId) {
+        log.debug("채팅방 삭제 API 요청: id={}, userId={}", id, userId);
+
         try {
-            chatRoomService.deleteChatRoom(id);
+            // 권한 검사는 서비스 계층에서 처리
+            chatRoomService.deleteChatRoom(id, userId);
             return ResponseEntity.noContent().build();
-        } catch (Exception e) {
+        } catch (ChatRoomException e) {
             log.warn("채팅방 삭제 실패: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 }

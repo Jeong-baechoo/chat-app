@@ -13,5 +13,5 @@ public interface ChatRoomService {
     Optional<ChatRoomResponse> findChatRoomById(Long id);
     List<ChatRoomResponse> findChatRoomsByUser(Long userId);
     ChatRoomResponse addParticipantToChatRoom(Long chatRoomId, Long userId);
-    void deleteChatRoom(Long id);
+    void deleteChatRoom(Long id, Long userId);
 }

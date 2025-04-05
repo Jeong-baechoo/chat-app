@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserService {
-    UserResponse createUser(UserCreateRequest request);
     List<UserResponse> findAllUsers();
     UserResponse findUserById(Long id);
     Optional<UserResponse> findByUsername(String username);

@@ -106,12 +106,21 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     @Transactional
-    public void deleteChatRoom(Long id) {
-        if (!chatRoomRepository.existsById(id)) {
-            throw new ChatRoomException("채팅방을 찾을 수 없습니다");
+    public void deleteChatRoom(Long id, Long userId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(id)
+                .orElseThrow(() -> new ChatRoomException("채팅방을 찾을 수 없습니다."));
+
+        // 방장인지 확인 (간단한 권한 체크)
+        boolean isAdmin = participantRepo.findByUserIdAndChatRoomId(userId, id)
+                .map(participant -> participant.getRole() == ParticipantRole.ADMIN)
+                .orElse(false);
+
+        if (!isAdmin) {
+            throw new ChatRoomException("채팅방을 삭제할 권한이 없습니다.");
         }
+
         chatRoomRepository.deleteById(id);
-        log.debug("채팅방 삭제: id={}", id);
+        log.debug("채팅방 삭제 완료: id={}", id);
     }
 
     private User findUserById(Long userId) {
