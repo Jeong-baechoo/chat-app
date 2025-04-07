@@ -2,41 +2,46 @@ package com.example.chatapp.repository;
 
 import com.example.chatapp.domain.ChatRoom;
 import com.example.chatapp.domain.ChatRoomType;
-import com.example.chatapp.domain.User;
-import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.TestPropertySource;
 
-import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-class ChatRoomRepositoryTest {
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+public class ChatRoomRepositoryTest {
 
     @Autowired
     private ChatRoomRepository chatRoomRepository;
 
-    @Autowired
-    private TestEntityManager entityManager;
+    private ChatRoom savedRoom;
 
-    @Test
-    @DisplayName("채팅방 생성 및 조회 테스트")
-    public void testCreateAndFindChatRoom() {
-        // Given
-        ChatRoom chatRoom = ChatRoom.builder()
-                .name("Test Chat Room")
+    @BeforeEach
+    void setUp() {
+        ChatRoom room = ChatRoom.builder()
+                .name("테스트 방")
                 .type(ChatRoomType.GROUP)
                 .build();
 
-        // When
-        ChatRoom savedChatRoom = chatRoomRepository.save(chatRoom);
+        savedRoom = chatRoomRepository.save(room); // 공통 테스트용 데이터 저장
+    }
 
-        // Then
-        assertThat(savedChatRoom).isNotNull();
-        assertThat(savedChatRoom.getName()).isEqualTo("Test Chat Room");
-        assertThat(savedChatRoom.getId()).isNotNull();
+    @Test
+    public void testFindById() {
+        // given
+        Long roomId = savedRoom.getId();
+
+        // when
+        Optional<ChatRoom> foundRoom = chatRoomRepository.findById(roomId);
+
+        // then
+        assertThat(foundRoom).isPresent();
+        assertThat(foundRoom.get().getName()).isEqualTo(savedRoom.getName());
     }
 }
