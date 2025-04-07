@@ -25,10 +25,13 @@ spring:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: update
-    show-sql: off
+    show-sql: false  # 중복 로깅 방지를 위해 false로 설정
     properties:
       hibernate:
         format_sql: true
+        use_sql_comments: true
+        # 쿼리 파라미터 값 로깅
+        type: trace
 
   # 프로파일 설정
   profiles:
@@ -54,6 +57,10 @@ logging:
         type:
           descriptor:
             sql: trace
+    com:
+      example:
+        chatapp:
+          repository: debug  # 리포지토리 로깅 활성화
 
 # 서버 포트 설정
 server:

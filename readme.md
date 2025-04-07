@@ -18,20 +18,38 @@ Spring Boot 기반의 실시간 채팅 애플리케이션입니다. WebSocket을
 - 사용자 상태 관리
 
 ## API 문서
-### REST API
-- `POST /api/chat-rooms` - 채팅방 생성
-- `GET /api/chat-rooms` - 모든 채팅방 조회
-- `GET /api/chat-rooms/{id}` - 특정 채팅방 조회
-- `GET /api/chat-rooms/user/{userId}` - 사용자가 참여한 채팅방 목록
-- `POST /api/chat-rooms/{chatRoomId}/join` - 채팅방 참여
-- `DELETE /api/chat-rooms/{id}` - 채팅방 삭제
 
-### WebSocket Endpoints
+### 인증 API
+- `POST /api/auth/login` - 사용자 로그인
+- `POST /api/auth/signup` - 사용자 회원가입
+- `POST /api/auth/validate` - JWT 토큰 유효성 검증
+
+### 채팅방 API
+- `GET /api/rooms` - 전체 채팅방 목록 조회
+- `GET /api/rooms/me?userId={userId}` - 사용자가 참여한 채팅방 목록 조회
+- `GET /api/rooms/{id}` - 특정 채팅방 상세 정보 조회
+- `POST /api/rooms` - 채팅방 생성
+- `POST /api/rooms/{id}/join` - 채팅방 참여
+- `DELETE /api/rooms/{id}` - 채팅방 삭제
+
+### 사용자 API
+- `GET /api/users` - 모든 사용자 조회
+- `GET /api/users/{id}` - 특정 사용자 조회
+- `GET /api/users/username/{username}` - 사용자명으로 사용자 조회
+- `PATCH /api/users/{id}/status` - 사용자 상태 업데이트
+
+### 메시지 API
+- `GET /api/messages/room/{roomId}` - 채팅방 메시지 조회 (페이지네이션)
+- `GET /api/messages/room/{roomId}/recent` - 채팅방 최근 메시지 조회
+- `PATCH /api/messages/{id}/status` - 메시지 상태 업데이트
+
+### WebSocket 엔드포인트
 - `ws://host/ws` - 웹소켓 연결 엔드포인트
-- `/app/chat.sendMessage` - 메시지 전송
-- `/app/chat.addUser` - 사용자 입장
-- `/app/chat.leaveUser` - 사용자 퇴장
-- `/topic/chat/{chatRoomId}` - 채팅방별 메시지 구독
+- `/app/message.send` - 메시지 전송
+- `/app/room.enter` - 채팅방 입장
+- `/app/room.leave` - 채팅방 퇴장
+- `/topic/room/{roomId}` - 채팅방별 메시지 구독
+- `/queue/errors` - 개인 오류 알림
 
 ## 프로젝트 구조
 ```
