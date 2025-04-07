@@ -4,6 +4,7 @@ import com.example.chatapp.domain.ChatRoom;
 import com.example.chatapp.domain.ChatRoomParticipant;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
+import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.dto.response.ParticipantResponse;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,14 @@ import java.util.stream.Collectors;
 
 @Component
 public class ChatRoomMapper {
+
+    public ChatRoomSimpleResponse toSimpleResponse(ChatRoom chatRoom) {
+        return ChatRoomSimpleResponse.builder()
+                .id(chatRoom.getId())
+                .name(chatRoom.getName())
+                .type(chatRoom.getType())
+                .build();
+    }
 
     public ChatRoomResponse toResponse(ChatRoom chatRoom) {
         List<ParticipantResponse> participantResponses = null;

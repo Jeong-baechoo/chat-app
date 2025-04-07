@@ -3,6 +3,7 @@ package com.example.chatapp.service.impl;
 import com.example.chatapp.domain.*;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
+import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.mapper.ChatRoomMapper;
@@ -13,6 +14,8 @@ import com.example.chatapp.service.ChatRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,17 +48,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 .joinedAt(LocalDateTime.now())
                 .build());
 
-        log.debug("채팅방 생성: id={}, name={}, creator={}",
-                savedChatRoom.getId(), savedChatRoom.getName(), creator.getUsername());
-
         return chatRoomMapper.toResponse(savedChatRoom);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ChatRoomResponse> findAllChatRooms() {
-        List<ChatRoom> rooms = chatRoomRepository.findAll();
-        log.debug("전체 채팅방 조회: {}개", rooms.size());
+        List<ChatRoom> rooms = chatRoomRepository.findAllWithParticipants();
         return rooms.stream()
                 .map(chatRoomMapper::toResponse)
                 .collect(Collectors.toList());
@@ -63,8 +62,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ChatRoomSimpleResponse> findAllChatRoomsSimple() {
+        return chatRoomRepository.findAllRoomsAsSimpleDto();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<ChatRoomResponse> findChatRoomById(Long id) {
-        return chatRoomRepository.findById(id).map(chatRoomMapper::toResponse);
+        return chatRoomRepository.findByIdWithParticipants(id)
+                .map(chatRoomMapper::toResponse);
     }
 
     @Override
@@ -74,11 +80,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             throw new UserException("사용자를 찾을 수 없습니다");
         }
 
-        List<ChatRoomParticipant> participations = participantRepo.findByUserId(userId);
-        log.debug("사용자 채팅방 조회: userId={}, 개수={}", userId, participations.size());
-
-        return participations.stream()
-                .map(p -> chatRoomMapper.toResponse(p.getChatRoom()))
+        List<ChatRoom> rooms = chatRoomRepository.findAllByParticipantUserId(userId);
+        return rooms.stream()
+                .map(chatRoomMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -98,7 +102,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                     .notificationEnabled(true)
                     .joinedAt(LocalDateTime.now())
                     .build());
-            log.debug("채팅방 참여 추가: room={}, user={}", chatRoomId, userId);
         }
 
         return chatRoomMapper.toResponse(chatRoom);
@@ -106,11 +109,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     @Transactional
-    public void deleteChatRoom(Long id, Long userId) {
+    public void deleteChatRoom(Long id) {
         ChatRoom chatRoom = chatRoomRepository.findById(id)
                 .orElseThrow(() -> new ChatRoomException("채팅방을 찾을 수 없습니다."));
 
-        // 방장인지 확인 (간단한 권한 체크)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName(); // 사용자명으로 식별
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserException("사용자를 찾을 수 없습니다."));
+        Long userId = user.getId();
+
         boolean isAdmin = participantRepo.findByUserIdAndChatRoomId(userId, id)
                 .map(participant -> participant.getRole() == ParticipantRole.ADMIN)
                 .orElse(false);

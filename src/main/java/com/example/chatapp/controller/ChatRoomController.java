@@ -3,6 +3,7 @@ package com.example.chatapp.controller;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.request.ChatRoomJoinRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
+import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.service.ChatRoomService;
 import jakarta.validation.Valid;
@@ -24,9 +25,9 @@ public class ChatRoomController {
      * 전체 채팅방 목록 조회
      */
     @GetMapping
-    public ResponseEntity<List<ChatRoomResponse>> getAllRooms() {
+    public ResponseEntity<?> getAllRooms() {
         log.debug("전체 채팅방 조회 API 요청");
-        List<ChatRoomResponse> response = chatRoomService.findAllChatRooms();
+        List<ChatRoomSimpleResponse> response = chatRoomService.findAllChatRoomsSimple();
         return ResponseEntity.ok(response);
     }
 
@@ -90,14 +91,11 @@ public class ChatRoomController {
      * 채팅방 삭제
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRoom(
-            @PathVariable Long id,
-            @RequestParam Long userId) {
-        log.debug("채팅방 삭제 API 요청: id={}, userId={}", id, userId);
+    public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
+        log.debug("채팅방 삭제 API 요청: id={}", id);
 
         try {
-            // 권한 검사는 서비스 계층에서 처리
-            chatRoomService.deleteChatRoom(id, userId);
+            chatRoomService.deleteChatRoom(id);
             return ResponseEntity.noContent().build();
         } catch (ChatRoomException e) {
             log.warn("채팅방 삭제 실패: {}", e.getMessage());
