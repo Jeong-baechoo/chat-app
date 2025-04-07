@@ -33,6 +33,7 @@ public class ChatRoomController {
 
     /**
      * 현재 사용자가 참여한 채팅방 목록 조회
+     * 세션을 사용해서 참가자 id 얻을것
      */
     @GetMapping("/me")
     public ResponseEntity<List<ChatRoomResponse>> getMyRooms(@RequestParam Long userId) {
@@ -59,7 +60,7 @@ public class ChatRoomController {
     public ResponseEntity<ChatRoomResponse> createRoom(
             @Valid @RequestBody ChatRoomCreateRequest request) {
         log.debug("채팅방 생성 API 요청: name={}, type={}, creatorId={}",
-                request.getName(), request.getType(), request.getCreatorId());
+                request.getName(), request.getType(), request.getCreatorId()); //세션에서 가져와야함
         try {
             ChatRoomResponse response = chatRoomService.createChatRoom(request);
             return ResponseEntity.ok(response);

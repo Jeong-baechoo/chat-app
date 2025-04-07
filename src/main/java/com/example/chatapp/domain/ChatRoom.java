@@ -30,7 +30,7 @@ public class ChatRoom {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "chatRoom")
-    private List<ChatRoomParticipant> participants;
+    private List<ChatRoomParticipant> participants = new ArrayList<>();
 
     // 채팅방의 메시지들
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL)
