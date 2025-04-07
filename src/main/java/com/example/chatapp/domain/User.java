@@ -31,14 +31,6 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // 사용자가 참여한 채팅방들
-    @OneToMany(mappedBy = "user")
-    private List<ChatRoomParticipant> chatRoomParticipants;
-
-    // 사용자가 보낸 메시지들
-    @OneToMany(mappedBy = "sender")
-    private List<Message> sentMessages;
-
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
