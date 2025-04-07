@@ -12,7 +12,6 @@ import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.impl.ChatRoomServiceImpl;
-import jakarta.validation.Valid;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -71,7 +70,6 @@ class ChatRoomServiceImplTest {
     private ChatRoomParticipant adminParticipant;
     private ChatRoomResponse testChatRoomResponse;
     private ChatRoomSimpleResponse testChatRoomSimpleResponse;
-    private List<ParticipantResponse> participantResponses;
 
     @BeforeEach
     void setUp() {
@@ -97,7 +95,7 @@ class ChatRoomServiceImplTest {
         testChatRoom.setParticipants(participants);
 
         // Setup participant responses
-        participantResponses = new ArrayList<>();
+        List<ParticipantResponse> participantResponses = new ArrayList<>();
         participantResponses.add(ParticipantResponse.builder()
                 .userId(1L)
                 .username("testuser")
@@ -224,8 +222,8 @@ class ChatRoomServiceImplTest {
             // Then
             assertNotNull(result);
             assertEquals(1, result.size());
-            assertEquals(testChatRoomResponse.getId(), result.get(0).getId());
-            assertEquals(testChatRoomResponse.getName(), result.get(0).getName());
+            assertEquals(testChatRoomResponse.getId(), result.getFirst().getId());
+            assertEquals(testChatRoomResponse.getName(), result.getFirst().getName());
             verify(chatRoomRepository).findAllWithParticipants();
         }
 
@@ -242,8 +240,8 @@ class ChatRoomServiceImplTest {
             // Then
             assertNotNull(result);
             assertEquals(1, result.size());
-            assertEquals(testChatRoomSimpleResponse.getId(), result.get(0).getId());
-            assertEquals(testChatRoomSimpleResponse.getName(), result.get(0).getName());
+            assertEquals(testChatRoomSimpleResponse.getId(), result.getFirst().getId());
+            assertEquals(testChatRoomSimpleResponse.getName(), result.getFirst().getName());
             verify(chatRoomRepository).findAllRoomsAsSimpleDto();
         }
 
@@ -293,8 +291,8 @@ class ChatRoomServiceImplTest {
             // Then
             assertNotNull(result);
             assertEquals(1, result.size());
-            assertEquals(testChatRoomResponse.getId(), result.get(0).getId());
-            assertEquals(testChatRoomResponse.getName(), result.get(0).getName());
+            assertEquals(testChatRoomResponse.getId(), result.getFirst().getId());
+            assertEquals(testChatRoomResponse.getName(), result.getFirst().getName());
             verify(userRepository).existsById(1L);
             verify(chatRoomRepository).findAllByParticipantUserId(1L);
         }
