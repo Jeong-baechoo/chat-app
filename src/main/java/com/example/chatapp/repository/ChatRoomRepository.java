@@ -10,11 +10,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
-    /**
-     * 모든 채팅방의 기본 정보만 조회 (참가자 정보 없이)
-     */
-    @Query("SELECT cr FROM ChatRoom cr")
-    List<ChatRoom> findAllRoomsSimple();
 
     /**
      * 채팅방 기본 정보만 DTO로 직접 조회

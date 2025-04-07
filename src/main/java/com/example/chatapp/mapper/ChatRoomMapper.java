@@ -16,13 +16,6 @@ import java.util.stream.Collectors;
 @Component
 public class ChatRoomMapper {
 
-    public ChatRoomSimpleResponse toSimpleResponse(ChatRoom chatRoom) {
-        return ChatRoomSimpleResponse.builder()
-                .id(chatRoom.getId())
-                .name(chatRoom.getName())
-                .type(chatRoom.getType())
-                .build();
-    }
 
     public ChatRoomResponse toResponse(ChatRoom chatRoom) {
         List<ParticipantResponse> participantResponses = null;
