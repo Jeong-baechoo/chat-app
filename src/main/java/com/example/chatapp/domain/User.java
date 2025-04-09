@@ -24,16 +24,11 @@ public class User {
     @Column(nullable = false, length = 255)
     private String password;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private UserStatus status;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
-        this.status = UserStatus.OFFLINE;
     }
 }

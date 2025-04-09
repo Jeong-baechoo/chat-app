@@ -149,7 +149,6 @@ class ChatRoomServiceTest {
 
         // SecurityContext 목 설정
         SecurityContextHolder.setContext(securityContext);
-        when(securityContext.getAuthentication()).thenReturn(authentication);
     }
 
     @Nested
@@ -181,7 +180,7 @@ class ChatRoomServiceTest {
             // 사용자 조회 및 채팅방 저장 검증
             verify(userRepository).findById(USER_ID);
             verify(chatRoomRepository).save(any(ChatRoom.class));
-            
+
             // 참가자 생성 검증
             ArgumentCaptor<ChatRoomParticipant> participantCaptor = ArgumentCaptor.forClass(ChatRoomParticipant.class);
             verify(chatRoomParticipantRepository).save(participantCaptor.capture());
@@ -207,7 +206,7 @@ class ChatRoomServiceTest {
             // When & Then
             assertThatThrownBy(() -> chatRoomService.createChatRoom(createDTO))
                     .isInstanceOf(UserException.class);
-            
+
             verify(chatRoomRepository, never()).save(any());
             verify(chatRoomParticipantRepository, never()).save(any());
         }
@@ -223,7 +222,7 @@ class ChatRoomServiceTest {
             // Given
             Long newUserId = 3L;
             User newUser = User.builder().id(newUserId).username("newuser").build();
-            
+
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
             when(userRepository.findById(newUserId)).thenReturn(Optional.of(newUser));
             when(chatRoomParticipantRepository.existsByUserIdAndChatRoomId(newUserId, CHAT_ROOM_ID)).thenReturn(false);
@@ -262,7 +261,7 @@ class ChatRoomServiceTest {
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getId()).isEqualTo(CHAT_ROOM_ID);
-            
+
             // 이미 멤버이므로 참가자 저장이 호출되지 않음
             verify(chatRoomParticipantRepository, never()).save(any());
         }
@@ -281,6 +280,7 @@ class ChatRoomServiceTest {
             when(userRepository.findByUsername(ADMIN_USERNAME)).thenReturn(Optional.of(adminUser));
             when(chatRoomParticipantRepository.findByUserIdAndChatRoomId(ADMIN_ID, CHAT_ROOM_ID))
                     .thenReturn(Optional.of(adminParticipant));
+            when(securityContext.getAuthentication()).thenReturn(authentication);
 
             // When
             chatRoomService.deleteChatRoom(CHAT_ROOM_ID);
@@ -298,7 +298,7 @@ class ChatRoomServiceTest {
             // When & Then
             assertThatThrownBy(() -> chatRoomService.deleteChatRoom(NONEXISTENT_ID))
                     .isInstanceOf(ChatRoomException.class);
-                    
+
             verify(chatRoomRepository, never()).deleteById(anyLong());
         }
 
@@ -311,11 +311,13 @@ class ChatRoomServiceTest {
             when(userRepository.findByUsername(TEST_USERNAME)).thenReturn(Optional.of(testUser));
             when(chatRoomParticipantRepository.findByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID))
                     .thenReturn(Optional.of(testParticipant));
+            when(securityContext.getAuthentication()).thenReturn(authentication);
+
 
             // When & Then
             assertThatThrownBy(() -> chatRoomService.deleteChatRoom(CHAT_ROOM_ID))
                     .isInstanceOf(ChatRoomException.class);
-                    
+
             verify(chatRoomRepository, never()).deleteById(anyLong());
         }
     }

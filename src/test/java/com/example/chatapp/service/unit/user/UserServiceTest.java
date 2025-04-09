@@ -49,13 +49,11 @@ class UserServiceTest {
         User testUser = User.builder()
                 .id(USER_ID)
                 .username(TEST_USERNAME)
-                .status(UserStatus.OFFLINE) // 처음 상태
                 .build();
 
         User updatedUser = User.builder()
                 .id(USER_ID)
                 .username(TEST_USERNAME)
-                .status(UserStatus.ONLINE) // 변경될 상태
                 .build();
 
         UserResponse userResponse = UserResponse.builder()
@@ -78,12 +76,11 @@ class UserServiceTest {
 
         // 사용자 조회 및 저장 검증
         verify(userRepository).findById(USER_ID);
-        
+
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         User savedUser = userCaptor.getValue();
-        assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ONLINE);
-        
+
         verify(userMapper).toResponse(updatedUser);
     }
 
@@ -96,7 +93,7 @@ class UserServiceTest {
         // When & Then
         assertThatThrownBy(() -> userService.updateUserStatus(NONEXISTENT_ID, UserStatus.OFFLINE))
                 .isInstanceOf(RuntimeException.class);
-                
+
         verify(userRepository).findById(NONEXISTENT_ID);
         verify(userRepository, never()).save(any(User.class));
     }
@@ -124,7 +121,7 @@ class UserServiceTest {
         // When & Then
         assertThatThrownBy(() -> userService.deleteUser(NONEXISTENT_ID))
                 .isInstanceOf(RuntimeException.class);
-                
+
         verify(userRepository).existsById(NONEXISTENT_ID);
         verify(userRepository, never()).deleteById(anyLong());
     }

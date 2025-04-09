@@ -109,8 +109,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     @Transactional
-    public void deleteChatRoom(Long id) {
-        ChatRoom chatRoom = chatRoomRepository.findById(id)
+    public void deleteChatRoom(Long chatRoomId) {
+        chatRoomRepository.findById(chatRoomId)
                 .orElseThrow(() -> new ChatRoomException("채팅방을 찾을 수 없습니다."));
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -118,9 +118,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UserException("사용자를 찾을 수 없습니다."));
+
         Long userId = user.getId();
 
-        boolean isAdmin = participantRepo.findByUserIdAndChatRoomId(userId, id)
+        boolean isAdmin = participantRepo.findByUserIdAndChatRoomId(userId, chatRoomId)
                 .map(participant -> participant.getRole() == ParticipantRole.ADMIN)
                 .orElse(false);
 
@@ -128,8 +129,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             throw new ChatRoomException("채팅방을 삭제할 권한이 없습니다.");
         }
 
-        chatRoomRepository.deleteById(id);
-        log.debug("채팅방 삭제 완료: id={}", id);
+        chatRoomRepository.deleteById(chatRoomId);
+        log.debug("채팅방 삭제 완료: id={}", chatRoomId);
     }
 
     private User findUserById(Long userId) {

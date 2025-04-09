@@ -95,7 +95,6 @@ class MessageServiceTest {
                 .id(USER_ID)
                 .username("testUser")
                 .password("password")
-                .status(UserStatus.ONLINE)
                 .build();
 
         // 테스트 채팅방 설정

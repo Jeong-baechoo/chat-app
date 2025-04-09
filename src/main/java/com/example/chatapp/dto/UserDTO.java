@@ -12,7 +12,6 @@ import lombok.*;
 public class UserDTO {
     private Long id;
     private String username;
-    private UserStatus status;
 
     /**
      * User 엔티티를 UserDTO로 변환하는 정적 메서드
@@ -21,7 +20,6 @@ public class UserDTO {
         return UserDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .status(user.getStatus())
                 .build();
     }
 }

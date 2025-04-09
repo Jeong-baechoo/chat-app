@@ -56,7 +56,6 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserException("사용자(ID: " + id + ")를 찾을 수 없습니다."));
 
-        user.setStatus(status);
         User updatedUser = userRepository.save(user);
         log.debug("사용자 상태 업데이트: id={}, status={}", id, status);
 

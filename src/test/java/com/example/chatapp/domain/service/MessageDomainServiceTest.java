@@ -29,19 +29,16 @@ class MessageDomainServiceTest {
         user = User.builder()
                 .id(1L)
                 .username("user")
-                .status(UserStatus.ONLINE)
                 .build();
 
         otherUser = User.builder()
                 .id(2L)
                 .username("otherUser")
-                .status(UserStatus.ONLINE)
                 .build();
 
         adminUser = User.builder()
                 .id(3L)
                 .username("adminUser")
-                .status(UserStatus.ONLINE)
                 .build();
 
         // 채팅방 참여자 설정
