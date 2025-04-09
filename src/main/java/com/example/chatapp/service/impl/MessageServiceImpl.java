@@ -4,200 +4,180 @@ import com.example.chatapp.domain.*;
 import com.example.chatapp.domain.service.MessageDomainService;
 import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
-import com.example.chatapp.event.MessageCreatedEvent;
-import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
-import com.example.chatapp.exception.UserException;
 import com.example.chatapp.mapper.MessageMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
-import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.repository.MessageRepository;
-import com.example.chatapp.repository.UserRepository;
+import com.example.chatapp.service.EntityFinderService;
+import com.example.chatapp.service.MessageEventPublisher;
 import com.example.chatapp.service.MessageService;
+import com.example.chatapp.service.MessageValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 메시지 서비스 구현 클래스
+ * 메시지 생성, 조회, 수정, 삭제 기능을 제공합니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
-    private final UserRepository userRepository;
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private final ChatRoomParticipantRepository participantRepository;
     private final MessageDomainService messageDomainService;
     private final MessageMapper messageMapper;
-    private final ApplicationEventPublisher eventPublisher;
-
-    private static final int MAX_MESSAGE_LENGTH = 1000;
+    private final EntityFinderService entityFinder;
+    private final MessageValidator validator;
+    private final MessageEventPublisher eventPublisher;
 
     /**
      * 메시지 전송
+     * 메시지 생성 요청을 검증하고, 새 메시지를 저장한 후 이벤트를 발행합니다.
+     * 
      * @param request 메시지 생성 요청 객체
      * @return 저장된 메시지의 응답 DTO
+     * @throws MessageException 메시지 요청이 유효하지 않은 경우
      */
     @Override
     @Transactional
     public MessageResponse sendMessage(MessageCreateRequest request) {
-        validateMessageRequest(request);
+        // 메시지 요청 검증
+        validator.validateMessageRequest(request);
 
-        User sender = findUserById(request.getSenderId());
-        ChatRoom chatRoom = findChatRoomById(request.getChatRoomId());
+        // 엔티티 조회
+        User sender = entityFinder.findUserById(request.getSenderId());
+        ChatRoom chatRoom = entityFinder.findChatRoomById(request.getChatRoomId());
 
-        validateChatRoomParticipant(sender.getId(), chatRoom.getId());
+        // 채팅방 참여자 여부 검증
+        if (!messageDomainService.canUserSendMessage(sender, chatRoom)) {
+            throw new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다");
+        }
 
-        Message message = messageMapper.toEntity(request, sender, chatRoom);
+        // 메시지 생성 및 저장
+        Message message = messageDomainService.createMessage(request.getContent(), sender, chatRoom);
         Message savedMessage = messageRepository.save(message);
 
-        publishMessageCreatedEvent(savedMessage);
+        // 이벤트 발행
+        eventPublisher.publishMessageCreatedEvent(savedMessage);
 
-        log.debug("메시지 저장: id={}, senderId={}, chatRoomId={}",
+        log.debug("메시지 저장 완료: id={}, senderId={}, chatRoomId={}",
                 savedMessage.getId(), sender.getId(), chatRoom.getId());
 
         return messageMapper.toResponse(savedMessage);
     }
 
-    // 채팅방 메시지 조회 (페이징)
+    /**
+     * 채팅방 메시지 조회 (페이징)
+     * 
+     * @param chatRoomId 채팅방 ID
+     * @param pageable 페이징 정보
+     * @return 페이징된 메시지 응답 목록
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<MessageResponse> getChatRoomMessages(Long chatRoomId, Pageable pageable) {
-        validateChatRoomExists(chatRoomId);
+        entityFinder.validateChatRoomExists(chatRoomId);
         return messageRepository.findByChatRoomIdOrderByTimestampDesc(chatRoomId, pageable)
                 .map(messageMapper::toResponse);
     }
 
-    // 최근 메시지 조회
+    /**
+     * 채팅방의 최근 메시지 조회
+     * 
+     * @param chatRoomId 채팅방 ID
+     * @param limit 조회할 메시지 수
+     * @return 최근 메시지 응답 목록
+     */
     @Override
     @Transactional(readOnly = true)
     public List<MessageResponse> getRecentChatRoomMessages(Long chatRoomId, int limit) {
-        validateChatRoomExists(chatRoomId);
+        entityFinder.validateChatRoomExists(chatRoomId);
         return messageRepository.findTopByChatRoomIdOrderByTimestampDesc(chatRoomId, limit)
                 .stream()
                 .map(messageMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
-    // 메시지 ID로 조회
+    /**
+     * 메시지 ID로 조회
+     * 
+     * @param id 메시지 ID
+     * @return 메시지 응답 객체
+     * @throws MessageException 메시지가 존재하지 않는 경우
+     */
     @Override
     @Transactional(readOnly = true)
     public MessageResponse findMessageById(Long id) {
-        return messageMapper.toResponse(findMessageEntityById(id));
+        Message message = entityFinder.findMessageById(id);
+        return messageMapper.toResponse(message);
     }
 
-    // 메시지 상태 업데이트
+    /**
+     * 메시지 상태 업데이트
+     * 
+     * @param messageId 메시지 ID
+     * @param userId 상태를 업데이트하려는 사용자 ID
+     * @param status 변경할 상태
+     * @return 업데이트된 메시지 응답
+     * @throws MessageException 메시지가 존재하지 않거나 권한이 없는 경우
+     */
     @Override
     @Transactional
     public MessageResponse updateMessageStatus(Long messageId, Long userId, MessageStatus status) {
-        Message message = findMessageEntityById(messageId);
-        User user = findUserById(userId);
+        Message message = entityFinder.findMessageById(messageId);
+        User user = entityFinder.findUserById(userId);
 
         if (!messageDomainService.canUserUpdateMessage(user, message)) {
-            throw new MessageException("메시지 상태 변경 권한 없음");
+            throw new MessageException("메시지 상태를 변경할 권한이 없습니다");
         }
 
-        message.setStatus(status);
-        Message updatedMessage = messageRepository.save(message);
+        Message updatedMessage = messageDomainService.updateMessageStatus(message, status);
+        Message savedMessage = messageRepository.save(updatedMessage);
 
-        log.debug("메시지 상태 업데이트: id={}, status={}", messageId, status);
+        log.debug("메시지 상태 업데이트 완료: id={}, status={}", messageId, status);
 
-        return messageMapper.toResponse(updatedMessage);
+        return messageMapper.toResponse(savedMessage);
     }
 
-    // 발신자별 메시지 조회
+    /**
+     * 발신자별 메시지 조회
+     * 
+     * @param senderId 발신자 ID
+     * @param pageable 페이징 정보
+     * @return 페이징된 메시지 응답 목록
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<MessageResponse> getMessagesBySender(Long senderId, Pageable pageable) {
-        validateUserExists(senderId);
+        entityFinder.validateUserExists(senderId);
         return messageRepository.findBySenderIdOrderByTimestampDesc(senderId, pageable)
                 .map(messageMapper::toResponse);
     }
 
-    // 메시지 삭제
+    /**
+     * 메시지 삭제
+     * 
+     * @param id 메시지 ID
+     * @param userId 삭제를 요청하는 사용자 ID
+     * @throws MessageException 메시지가 존재하지 않거나 권한이 없는 경우
+     */
     @Override
     @Transactional
     public void deleteMessage(Long id, Long userId) {
-        Message message = findMessageEntityById(id);
-        User user = findUserById(userId);
+        Message message = entityFinder.findMessageById(id);
+        User user = entityFinder.findUserById(userId);
 
         messageDomainService.validateDeletePermission(user, message, message.getChatRoom());
 
         messageRepository.delete(message);
-        log.debug("메시지 삭제: id={}", id);
-    }
-
-    // === 검증 메서드 ===
-
-    private void validateMessageRequest(MessageCreateRequest request) {
-        if (request.getSenderId() == null) {
-            throw new MessageException("발신자 ID 누락");
-        }
-        if (request.getChatRoomId() == null) {
-            throw new MessageException("채팅방 ID 누락");
-        }
-        if (!StringUtils.hasText(request.getContent())) {
-            throw new MessageException("메시지 내용 누락");
-        }
-        if (request.getContent().length() > MAX_MESSAGE_LENGTH) {
-            throw new MessageException("메시지 길이 초과: 최대 " + MAX_MESSAGE_LENGTH + "자");
-        }
-    }
-
-    // === 엔티티 조회 메서드 ===
-
-    private User findUserById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new UserException("사용자 없음: " + userId));
-    }
-
-    private ChatRoom findChatRoomById(Long chatRoomId) {
-        return chatRoomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new ChatRoomException("채팅방 없음: " + chatRoomId));
-    }
-
-    private Message findMessageEntityById(Long messageId) {
-        return messageRepository.findById(messageId)
-                .orElseThrow(() -> new MessageException("메시지 없음: " + messageId));
-    }
-
-    // === 유효성 검사 메서드 ===
-
-    private void   validateChatRoomParticipant(Long userId, Long chatRoomId) {
-        boolean isParticipant = chatRoomParticipantRepository.existsByUserIdAndChatRoomId(userId, chatRoomId);
-        if (!isParticipant) {
-            throw new MessageException("채팅방 참여자 아님");
-        }
-    }
-
-    private void validateChatRoomExists(Long chatRoomId) {
-        if (!chatRoomRepository.existsById(chatRoomId)) {
-            throw new ChatRoomException("채팅방 없음: " + chatRoomId);
-        }
-    }
-
-    private void validateUserExists(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            throw new UserException("사용자 없음: " + userId);
-        }
-    }
-
-    // === 이벤트 발행 ===
-
-    private void publishMessageCreatedEvent(Message message) {
-        MessageCreatedEvent event = new MessageCreatedEvent(
-                message.getId(),
-                message.getSender().getId(),
-                message.getChatRoom().getId(),
-                message.getTimestamp()
-        );
-        eventPublisher.publishEvent(event);
+        log.debug("메시지 삭제 완료: id={}", id);
     }
 }

@@ -14,4 +14,9 @@ public class UserResponse {
     private Long id;
     private String username;
     private UserStatus status;
+
+    public UserResponse(long l, String testUser) {
+        this.id = l;
+        this.username = testUser;
+    }
 }
