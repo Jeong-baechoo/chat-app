@@ -56,10 +56,10 @@ class MessageDomainServiceTest {
         chatRoom.setName("Test Room");
 
         // 채팅방 참여자 설정
-        Set<ChatRoomParticipant> participants = new HashSet<>();
+        HashSet<ChatRoomParticipant> participants = new HashSet<>();
         participants.add(participant);
         participants.add(adminParticipant);
-        chatRoom.setParticipants((List<ChatRoomParticipant>) participants);
+        chatRoom.setParticipants(participants);
 
         // 메시지 설정
         message = Message.builder()

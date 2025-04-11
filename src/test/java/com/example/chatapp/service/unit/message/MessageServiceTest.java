@@ -82,7 +82,6 @@ class MessageServiceTest {
         // 테스트 대상 서비스 초기화
         messageService = new MessageServiceImpl(
                 messageRepository,
-                chatRoomParticipantRepository,
                 messageDomainService,
                 messageMapper,
                 entityFinder,

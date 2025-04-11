@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
-    private final ChatRoomParticipantRepository participantRepository;
     private final MessageDomainService messageDomainService;
     private final MessageMapper messageMapper;
     private final EntityFinderService entityFinder;
@@ -41,7 +40,7 @@ public class MessageServiceImpl implements MessageService {
     /**
      * 메시지 전송
      * 메시지 생성 요청을 검증하고, 새 메시지를 저장한 후 이벤트를 발행합니다.
-     * 
+     *
      * @param request 메시지 생성 요청 객체
      * @return 저장된 메시지의 응답 DTO
      * @throws MessageException 메시지 요청이 유효하지 않은 경우
@@ -76,7 +75,7 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 채팅방 메시지 조회 (페이징)
-     * 
+     *
      * @param chatRoomId 채팅방 ID
      * @param pageable 페이징 정보
      * @return 페이징된 메시지 응답 목록
@@ -91,7 +90,7 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 채팅방의 최근 메시지 조회
-     * 
+     *
      * @param chatRoomId 채팅방 ID
      * @param limit 조회할 메시지 수
      * @return 최근 메시지 응답 목록
@@ -108,7 +107,7 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 메시지 ID로 조회
-     * 
+     *
      * @param id 메시지 ID
      * @return 메시지 응답 객체
      * @throws MessageException 메시지가 존재하지 않는 경우
@@ -122,7 +121,7 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 메시지 상태 업데이트
-     * 
+     *
      * @param messageId 메시지 ID
      * @param userId 상태를 업데이트하려는 사용자 ID
      * @param status 변경할 상태
@@ -149,7 +148,7 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 발신자별 메시지 조회
-     * 
+     *
      * @param senderId 발신자 ID
      * @param pageable 페이징 정보
      * @return 페이징된 메시지 응답 목록
@@ -164,7 +163,7 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 메시지 삭제
-     * 
+     *
      * @param id 메시지 ID
      * @param userId 삭제를 요청하는 사용자 ID
      * @throws MessageException 메시지가 존재하지 않거나 권한이 없는 경우
