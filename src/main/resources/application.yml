@@ -24,7 +24,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
@@ -45,6 +45,13 @@ spring:
     # 발행자 확인
     publisher-returns: true
     publisher-confirm-type: correlated
+  web:
+    cors:
+        allowed-origins: http://localhost:3000
+        allowed-methods: GET, POST, PUT, DELETE, OPTIONS
+        allowed-headers: Content-Type, Authorization
+        allow-credentials: true
+        max-age: 3600
 
 # 로깅 설정
 logging:
@@ -59,6 +66,7 @@ logging:
       example:
         chatapp:
           repository: DEBUG
+    com.example.chatapp.infrastructure.filter: DEBUG
 
 # 서버 포트 설정
 server:
@@ -71,6 +79,7 @@ chat:
     allowed-origins:
       - http://localhost:3000
       - http://localhost:8080
+
 
 jwt:
   secret: vAg3uL8nH6rP2tS5qY7xZ0dC1bF4mJ9oW2eR6vT8yU0iO3pA5sD7fG9hK1lZ3mN5bV6cX8dE0fG2hI4jK6lM8nO0pQ2rS4tU6vW8
