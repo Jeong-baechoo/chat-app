@@ -1,10 +1,12 @@
 package com.example.chatapp.controller;
 
 import com.example.chatapp.domain.ChatRoomType;
-import com.example.chatapp.dto.request.ChatRoomCreateRequest;
-import com.example.chatapp.dto.response.ChatRoomResponse;
+import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.infrastructure.auth.AuthContext;
+import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
+import com.example.chatapp.infrastructure.session.SessionStore;
 import com.example.chatapp.service.ChatRoomService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,18 +15,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.test.web.servlet.ResultActions;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
+import java.util.List;
+
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
 @WebMvcTest(ChatRoomController.class)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 class ChatRoomControllerTest {
 
     @Autowired
@@ -36,55 +38,31 @@ class ChatRoomControllerTest {
     @MockitoBean
     private AuthContext authContext; // 이 부분을 추가
 
-    @Test
-    void createRoom_WithoutCreatorId_ShouldSetCreatorIdFromAttribute() throws Exception {
-        // Given
-        ChatRoomCreateRequest request = new ChatRoomCreateRequest();
-        request.setName("테스트 채팅방");
-        request.setType(ChatRoomType.GROUP);
-        // creatorId는 의도적으로 설정하지 않음
-
-        ChatRoomResponse mockResponse = new ChatRoomResponse();
-        mockResponse.setId(1L);
-
-        when(chatRoomService.createChatRoom(any())).thenReturn(mockResponse);
-
-        // When & Then
-        mockMvc.perform(post("/api/chatrooms")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(new ObjectMapper().writeValueAsString(request))
-                        .requestAttr("userId", 123L)) // userId 속성 설정
-                .andExpect(status().isCreated());
-
-        // 서비스에 전달된 요청에 userId가 creatorId로 설정되었는지 확인
-        ArgumentCaptor<ChatRoomCreateRequest> requestCaptor = ArgumentCaptor.forClass(ChatRoomCreateRequest.class);
-        verify(chatRoomService).createChatRoom(requestCaptor.capture());
-        assertEquals(123L, requestCaptor.getValue().getCreatorId());
-    }
+    @MockitoBean
+    private SessionStore sessionStore;
 
     @Test
-    void createRoom_ShouldCreateRoomSuccessfully() throws Exception {
+    @DisplayName("전체 채팅방 조회 성공")
+    void testGetAllChatRooms() throws Exception {
         // Given
-        Long userId = 123L;
-        when(authContext.getCurrentUserId()).thenReturn(userId); // AuthContext 동작 설정
+        List<ChatRoomSimpleResponse> chatRoomSimpleResponses = List.of(
+                new ChatRoomSimpleResponse(1L, "testRoom1", ChatRoomType.GROUP),
+                new ChatRoomSimpleResponse(2L, "testRoom2", ChatRoomType.PRIVATE)
+        );
+        when(chatRoomService.findAllChatRoomsSimple()).thenReturn(chatRoomSimpleResponses);
 
-        ChatRoomCreateRequest request = new ChatRoomCreateRequest();
-        request.setName("테스트 채팅방");
-        request.setType(ChatRoomType.GROUP);
+        // When
+        ResultActions perform = mockMvc.perform(get("/api/rooms"));
 
-        ChatRoomResponse mockResponse = new ChatRoomResponse();
-        mockResponse.setId(1L);
-        when(chatRoomService.createChatRoom(any())).thenReturn(mockResponse);
-
-        // When & Then
-        mockMvc.perform(post("/api/chatrooms")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(new ObjectMapper().writeValueAsString(request)))
-                .andExpect(status().isCreated());
-
-        // 서비스에 전달된 요청에 userId가 creatorId로 설정되었는지 확인
-        ArgumentCaptor<ChatRoomCreateRequest> requestCaptor = ArgumentCaptor.forClass(ChatRoomCreateRequest.class);
-        verify(chatRoomService).createChatRoom(requestCaptor.capture());
-        assertEquals(userId, requestCaptor.getValue().getCreatorId());
+        // Then
+        perform.andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id").value(1L))
+                .andExpect(jsonPath("$[0].name").value("testRoom1"))
+                .andExpect(jsonPath("$[0].type").value(ChatRoomType.GROUP.toString()))
+                .andExpect(jsonPath("$[1].id").value(2L))
+                .andExpect(jsonPath("$[1].name").value("testRoom2"))
+                .andExpect(jsonPath("$[1].type").value(ChatRoomType.PRIVATE.toString()));
     }
 }
