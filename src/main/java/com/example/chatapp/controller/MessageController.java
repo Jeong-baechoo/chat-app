@@ -31,13 +31,8 @@ public class MessageController {
             @PageableDefault(size = 20) Pageable pageable) {
         log.debug("채팅방 메시지 조회: roomId={}, page={}, size={}",
                 roomId, pageable.getPageNumber(), pageable.getPageSize());
-        try {
-            Page<MessageResponse> messages = messageService.getChatRoomMessages(roomId, pageable);
-            return ResponseEntity.ok(messages);
-        } catch (Exception e) {
-            log.warn("메시지 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        Page<MessageResponse> messages = messageService.getChatRoomMessages(roomId, pageable);
+        return ResponseEntity.ok(messages);
     }
 
     /**
@@ -48,13 +43,8 @@ public class MessageController {
             @PathVariable Long roomId,
             @RequestParam(defaultValue = "50") int limit) {
         log.debug("최근 메시지 조회: roomId={}, limit={}", roomId, limit);
-        try {
-            List<MessageResponse> messages = messageService.getRecentChatRoomMessages(roomId, limit);
-            return ResponseEntity.ok(messages);
-        } catch (Exception e) {
-            log.warn("최근 메시지 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        List<MessageResponse> messages = messageService.getRecentChatRoomMessages(roomId, limit);
+        return ResponseEntity.ok(messages);
     }
 
     /**
@@ -64,15 +54,8 @@ public class MessageController {
     public ResponseEntity<MessageResponse> updateStatus(
             @PathVariable Long id,
             @Valid @RequestBody MessageStatusUpdateRequest request) {
-        log.debug("메시지 상태 업데이트: id={}, status={}, userId={}",
-                id, request.getStatus(), request.getUserId());
-        try {
-            MessageResponse updated = messageService.updateMessageStatus(
-                    id, request.getUserId(), request.getStatus());
-            return ResponseEntity.ok(updated);
-        } catch (MessageException e) {
-            log.warn("상태 업데이트 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        log.debug("메시지 상태 업데이트: id={}, status={}, userId={}", id, request.getStatus(), request.getUserId());
+        MessageResponse updated = messageService.updateMessageStatus(id, request.getUserId(), request.getStatus());
+        return ResponseEntity.ok(updated);
     }
 }

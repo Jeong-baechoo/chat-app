@@ -30,12 +30,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(userService.findUserById(id));
-        } catch (Exception e) {
-            log.warn("조회 실패: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(userService.findUserById(id));
     }
 
     @GetMapping("/username/{username}")

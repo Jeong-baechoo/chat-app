@@ -38,18 +38,14 @@ public class WebSocketController {
         log.debug("WebSocket 메시지 전송: senderId={}, roomId={}",
                 request.getSenderId(), request.getChatRoomId());
 
-        try {
-            // 메시지 저장 및 DTO로 변환
-            MessageResponse messageDTO = messageService.sendMessage(request);
+        // 메시지 저장 및 DTO로 변환
+        MessageResponse messageDTO = messageService.sendMessage(request);
 
-            // 메시지 이벤트 전송
-            broadcastMessage("MESSAGE", messageDTO.getSender(), request.getChatRoomId(),
-                    messageDTO.getContent(), messageDTO, null);
+        // 메시지 이벤트 전송
+        broadcastMessage("MESSAGE", messageDTO.getSender(), request.getChatRoomId(),
+                messageDTO.getContent(), messageDTO, null);
 
-            log.debug("메시지 전송 성공: id={}", messageDTO.getId());
-        } catch (Exception e) {
-            handleProcessingError("메시지 전송 실패", e);
-        }
+        log.debug("메시지 전송 성공: id={}", messageDTO.getId());
     }
 
     /**
@@ -57,24 +53,20 @@ public class WebSocketController {
      */
     @MessageMapping("/room.enter")
     public void enterRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) throws Exception {
-        try {
-            Long userId = extractLongValue(payload, "userId");
-            Long roomId = extractLongValue(payload, "roomId");
+        Long userId = extractLongValue(payload, "userId");
+        Long roomId = extractLongValue(payload, "roomId");
 
-            // 사용자 정보 조회
-            UserResponse user = userService.findUserById(userId);
+        // 사용자 정보 조회
+        UserResponse user = userService.findUserById(userId);
 
-            // 세션에 사용자 정보 저장
-            updateSessionAttributes(headerAccessor, userId, roomId);
+        // 세션에 사용자 정보 저장
+        updateSessionAttributes(headerAccessor, userId, roomId);
 
-            // 입장 이벤트 전송
-            String content = user.getUsername() + "님이 채팅방에 입장했습니다.";
-            broadcastMessage("ENTER", user, roomId, content, null, null);
+        // 입장 이벤트 전송
+        String content = user.getUsername() + "님이 채팅방에 입장했습니다.";
+        broadcastMessage("ENTER", user, roomId, content, null, null);
 
-            log.info("사용자 입장: userId={}, roomId={}", userId, roomId);
-        } catch (Exception e) {
-            handleProcessingError("사용자 입장 처리 실패", e);
-        }
+        log.info("사용자 입장: userId={}, roomId={}", userId, roomId);
     }
 
     /**
@@ -82,24 +74,20 @@ public class WebSocketController {
      */
     @MessageMapping("/room.leave")
     public void leaveRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) throws Exception {
-        try {
-            Long userId = extractLongValue(payload, "userId");
-            Long roomId = extractLongValue(payload, "roomId");
+        Long userId = extractLongValue(payload, "userId");
+        Long roomId = extractLongValue(payload, "roomId");
 
-            // 사용자 정보 조회
-            UserResponse user = userService.findUserById(userId);
+        // 사용자 정보 조회
+        UserResponse user = userService.findUserById(userId);
 
-            // 세션에서 사용자 정보 제거
-            clearSessionAttributes(headerAccessor);
+        // 세션에서 사용자 정보 제거
+        clearSessionAttributes(headerAccessor);
 
-            // 퇴장 이벤트 전송
-            String content = user.getUsername() + "님이 채팅방에서 퇴장했습니다.";
-            broadcastMessage("LEAVE", user, roomId, content, null, null);
+        // 퇴장 이벤트 전송
+        String content = user.getUsername() + "님이 채팅방에서 퇴장했습니다.";
+        broadcastMessage("LEAVE", user, roomId, content, null, null);
 
-            log.info("사용자 퇴장: userId={}, roomId={}", userId, roomId);
-        } catch (Exception e) {
-            handleProcessingError("사용자 퇴장 처리 실패", e);
-        }
+        log.info("사용자 퇴장: userId={}, roomId={}", userId, roomId);
     }
 
     /**
@@ -197,11 +185,4 @@ public class WebSocketController {
         return Long.valueOf(value.toString());
     }
 
-    /**
-     * 예외 처리 및 로깅
-     */
-    private void handleProcessingError(String message, Exception e) throws Exception {
-        log.error("{}: {}", message, e.getMessage(), e);
-        throw e;
-    }
 }

@@ -89,14 +89,8 @@ public class ChatRoomController {
             @PathVariable Long id,
             @Valid @RequestBody ChatRoomJoinRequest request) {
         log.debug("채팅방 참여 API 요청: roomId={}, userId={}", id, request.getUserId());
-
-        try {
-            ChatRoomResponse response = chatRoomService.addParticipantToChatRoom(id, request.getUserId());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.warn("채팅방 참여 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        ChatRoomResponse response = chatRoomService.addParticipantToChatRoom(id, request.getUserId());
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -105,14 +99,8 @@ public class ChatRoomController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {
         log.debug("채팅방 삭제 API 요청: id={}", id);
-
-        try {
-            Long currentUserId = authContext.getCurrentUserId();
-            chatRoomService.deleteChatRoom(id,currentUserId);
-            return ResponseEntity.noContent().build();
-        } catch (ChatRoomException e) {
-            log.warn("채팅방 삭제 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        Long currentUserId = authContext.getCurrentUserId();
+        chatRoomService.deleteChatRoom(id, currentUserId);
+        return ResponseEntity.noContent().build();
     }
 }

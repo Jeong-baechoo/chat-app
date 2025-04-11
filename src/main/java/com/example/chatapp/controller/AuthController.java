@@ -38,23 +38,13 @@ public class AuthController {
         String username = request.get("username");
         String password = request.get("password");
 
-        try {
-            Map<String, Object> authResponse = authService.login(username, password);
+        Map<String, Object> authResponse = authService.login(username, password);
 
-            // 세션 토큰을 쿠키에 저장
-            String token = (String) authResponse.get("token");
-            setCookie(response, token);
+        // 세션 토큰을 쿠키에 저장
+        String token = (String) authResponse.get("token");
+        setCookie(response, token);
 
-            return ResponseEntity.ok(authResponse);
-        } catch (UnauthorizedException e) {
-            // 인증 실패 - 401 상태 코드
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
-                    .body(Map.of("error", e.getMessage(), "status", HttpServletResponse.SC_UNAUTHORIZED));
-        } catch (Exception e) {
-            // 그 외 오류 - 400 상태 코드
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage(), "status", HttpServletResponse.SC_BAD_REQUEST));
-        }
+        return ResponseEntity.ok(authResponse);
     }
 
     /**
@@ -68,24 +58,13 @@ public class AuthController {
         String username = request.get("username");
         String password = request.get("password");
 
-        try {
-            Map<String, Object> authResponse = authService.signup(username, password);
+        Map<String, Object> authResponse = authService.signup(username, password);
 
-            // 세션 토큰을 쿠키에 저장
-            String token = (String) authResponse.get("token");
-            setCookie(response, token);
+        // 세션 토큰을 쿠키에 저장
+        String token = (String) authResponse.get("token");
+        setCookie(response, token);
 
-            return ResponseEntity.ok(authResponse);
-        } catch (IllegalArgumentException e) {
-            // 유효성 검사 실패 - 400 상태 코드
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", e.getMessage(), "status", HttpServletResponse.SC_BAD_REQUEST));
-        } catch (Exception e) {
-            // 서버 오류 - 500 상태 코드
-            return ResponseEntity.status(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "회원가입 처리 중 오류가 발생했습니다",
-                                 "status", HttpServletResponse.SC_INTERNAL_SERVER_ERROR));
-        }
+        return ResponseEntity.ok(authResponse);
     }
 
     /**
@@ -101,23 +80,11 @@ public class AuthController {
         String sessionToken = getTokenFromCookieOrHeader(token, authHeader);
 
         if (sessionToken == null) {
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
-                    .body(Map.of("error", "인증이 필요합니다",
-                                "status", HttpServletResponse.SC_UNAUTHORIZED));
+            throw new UnauthorizedException("인증이 필요합니다");
         }
 
-        try {
-            Map<String, Object> response = authService.validateToken(sessionToken);
-            return ResponseEntity.ok(response);
-        } catch (UnauthorizedException e) {
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
-                    .body(Map.of("error", e.getMessage(),
-                                "status", HttpServletResponse.SC_UNAUTHORIZED));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "토큰 검증 중 오류가 발생했습니다",
-                                "status", HttpServletResponse.SC_INTERNAL_SERVER_ERROR));
-        }
+        Map<String, Object> response = authService.validateToken(sessionToken);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -152,17 +119,17 @@ public class AuthController {
         // 쿠키에서 토큰을 가져오거나, Authorization 헤더에서 가져옴
         String sessionToken = getTokenFromCookieOrHeader(token, authHeader);
 
-        if (sessionToken == null || !authService.isValidSession(sessionToken)) {
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
-                    .body(Map.of("error", sessionToken == null ? "인증이 필요합니다" : "세션이 만료되었습니다",
-                                "status", HttpServletResponse.SC_UNAUTHORIZED));
+        if (sessionToken == null) {
+            throw new UnauthorizedException("인증이 필요합니다");
+        }
+        
+        if (!authService.isValidSession(sessionToken)) {
+            throw new UnauthorizedException("세션이 만료되었습니다");
         }
 
         User user = authService.getUserBySessionToken(sessionToken);
         if (user == null) {
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED)
-                    .body(Map.of("error", "사용자를 찾을 수 없습니다",
-                                "status", HttpServletResponse.SC_UNAUTHORIZED));
+            throw new UnauthorizedException("사용자를 찾을 수 없습니다");
         }
 
         Map<String, Object> response = new HashMap<>();

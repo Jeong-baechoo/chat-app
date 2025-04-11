@@ -28,6 +28,12 @@ public class GlobalExceptionHandler {
     ErrorResponse error = new ErrorResponse("MESSAGE_ERROR", e.getMessage(), LocalDateTime.now());
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
+  
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException e) {
+    ErrorResponse error = new ErrorResponse("AUTH_ERROR", e.getMessage(), LocalDateTime.now());
+    return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+  }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(Exception e) {
