@@ -13,15 +13,11 @@ public class LoginSession {
     /**
      * -- GETTER --
      *  사용자 ID 조회
-     *
-     * @return 사용자 ID
      */
     private final Long userId;
     /**
      * -- GETTER --
      *  세션 만료 시간 조회
-     *
-     * @return 만료 시간 (밀리초 단위 timestamp)
      */
     private long expiryTime;
 

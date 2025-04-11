@@ -4,6 +4,7 @@ import com.example.chatapp.domain.LoginSession;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,6 +24,12 @@ public class InMemorySessionStore implements SessionStore {
     @Override
     public LoginSession getSession(String token) {
         return sessions.get(token);
+    }
+
+    @Override
+    public List<LoginSession> getAllSessions() {
+        List<LoginSession> sessionList = List.copyOf(sessions.values());
+        return sessionList;
     }
 
     @Override
