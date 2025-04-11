@@ -1,7 +1,6 @@
 package com.example.chatapp.dto;
 
 import com.example.chatapp.domain.User;
-import com.example.chatapp.domain.UserStatus;
 import lombok.*;
 
 @Data

@@ -23,6 +23,11 @@ public class UserController {
         return ResponseEntity.ok(userService.findAllUsers());
     }
 
+    @GetMapping("/isLoggedIn")
+    public ResponseEntity<List<UserResponse>> getLoggedInUsers() {
+        return ResponseEntity.ok(userService.findLoggedInUsers());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         try {

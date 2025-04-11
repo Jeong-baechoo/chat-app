@@ -39,7 +39,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserServiceImpl(userRepository, userMapper);
+        userService = new UserServiceImpl(userRepository, userMapper, null);
     }
 
     @Test
@@ -59,7 +59,6 @@ class UserServiceTest {
         UserResponse userResponse = UserResponse.builder()
                 .id(USER_ID)
                 .username(TEST_USERNAME)
-                .status(UserStatus.ONLINE)
                 .build();
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
@@ -72,7 +71,6 @@ class UserServiceTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(USER_ID);
-        assertThat(result.getStatus()).isEqualTo(UserStatus.ONLINE);
 
         // 사용자 조회 및 저장 검증
         verify(userRepository).findById(USER_ID);

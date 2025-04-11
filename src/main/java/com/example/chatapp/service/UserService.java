@@ -12,4 +12,6 @@ public interface UserService {
     Optional<UserResponse> findByUsername(String username);
     UserResponse updateUserStatus(Long id, UserStatus status);
     void deleteUser(Long id);
+
+    List<UserResponse> findLoggedInUsers();
 }

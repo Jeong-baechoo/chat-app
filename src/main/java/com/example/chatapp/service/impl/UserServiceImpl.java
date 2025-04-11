@@ -4,6 +4,7 @@ import com.example.chatapp.domain.User;
 import com.example.chatapp.domain.UserStatus;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UserException;
+import com.example.chatapp.infrastructure.session.SessionStore;
 import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.UserService;
@@ -22,12 +23,12 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final SessionStore sessionStore;
 
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> findAllUsers() {
         List<User> users = userRepository.findAll();
-        log.debug("전체 사용자 조회: {}명 조회됨", users.size());
 
         return users.stream()
                 .map(userMapper::toResponse)
@@ -71,5 +72,18 @@ public class UserServiceImpl implements UserService {
 
         userRepository.deleteById(id);
         log.debug("사용자 삭제 완료: id={}", id);
+    }
+
+    @Override
+    public List<UserResponse> findLoggedInUsers() {
+        List<UserResponse> list = sessionStore.getAllSessions().stream()
+                .map(session -> userRepository.findById(session.getUserId()))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(userMapper::toResponse)
+                .toList();
+        log.debug("전체 사용자 조회: {}명 조회됨", list.size());
+
+        return list;
     }
 }
