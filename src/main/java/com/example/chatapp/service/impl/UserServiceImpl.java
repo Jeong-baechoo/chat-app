@@ -1,7 +1,6 @@
 package com.example.chatapp.service.impl;
 
 import com.example.chatapp.domain.User;
-import com.example.chatapp.domain.UserStatus;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.session.SessionStore;
@@ -49,18 +48,6 @@ public class UserServiceImpl implements UserService {
     public Optional<UserResponse> findByUsername(String username) {
         return userRepository.findByUsername(username)
                 .map(userMapper::toResponse);
-    }
-
-    @Override
-    @Transactional
-    public UserResponse updateUserStatus(Long id, UserStatus status) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new UserException("사용자(ID: " + id + ")를 찾을 수 없습니다."));
-
-        User updatedUser = userRepository.save(user);
-        log.debug("사용자 상태 업데이트: id={}, status={}", id, status);
-
-        return userMapper.toResponse(updatedUser);
     }
 
     @Override

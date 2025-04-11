@@ -1,9 +1,7 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.dto.request.UserStatusUpdateRequest;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.service.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -38,12 +36,5 @@ public class UserController {
         return userService.findByUsername(username)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<UserResponse> updateUserStatus(
-            @PathVariable Long id,
-            @Valid @RequestBody UserStatusUpdateRequest request) {
-        return ResponseEntity.ok(userService.updateUserStatus(id, request.getStatus()));
     }
 }

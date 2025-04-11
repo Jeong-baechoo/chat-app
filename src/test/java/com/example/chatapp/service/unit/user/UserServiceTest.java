@@ -1,7 +1,6 @@
 package com.example.chatapp.service.unit.user;
 
 import com.example.chatapp.domain.User;
-import com.example.chatapp.domain.UserStatus;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.UserRepository;
@@ -10,13 +9,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -40,60 +37,6 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserServiceImpl(userRepository, userMapper, null);
-    }
-
-    @Test
-    @DisplayName("givenUserId_whenUpdateUserStatus_thenStatusIsUpdated")
-    void givenUserId_whenUpdateUserStatus_thenStatusIsUpdated() {
-        // Given
-        User testUser = User.builder()
-                .id(USER_ID)
-                .username(TEST_USERNAME)
-                .build();
-
-        User updatedUser = User.builder()
-                .id(USER_ID)
-                .username(TEST_USERNAME)
-                .build();
-
-        UserResponse userResponse = UserResponse.builder()
-                .id(USER_ID)
-                .username(TEST_USERNAME)
-                .build();
-
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(userMapper.toResponse(updatedUser)).thenReturn(userResponse);
-
-        // When
-        UserResponse result = userService.updateUserStatus(USER_ID, UserStatus.ONLINE);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(USER_ID);
-
-        // 사용자 조회 및 저장 검증
-        verify(userRepository).findById(USER_ID);
-
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
-
-        verify(userMapper).toResponse(updatedUser);
-    }
-
-    @Test
-    @DisplayName("givenNonExistentUserId_whenUpdateUserStatus_thenThrowException")
-    void givenNonExistentUserId_whenUpdateUserStatus_thenThrowException() {
-        // Given
-        when(userRepository.findById(NONEXISTENT_ID)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> userService.updateUserStatus(NONEXISTENT_ID, UserStatus.OFFLINE))
-                .isInstanceOf(RuntimeException.class);
-
-        verify(userRepository).findById(NONEXISTENT_ID);
-        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
