@@ -6,7 +6,6 @@ import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.mapper.MessageMapper;
-import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.service.EntityFinderService;
 import com.example.chatapp.service.MessageEventPublisher;

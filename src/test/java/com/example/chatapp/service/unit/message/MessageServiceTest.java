@@ -271,7 +271,7 @@ class MessageServiceTest {
             // Then
             assertThat(result).isNotNull();
             assertThat(result.getTotalElements()).isEqualTo(1);
-            assertThat(result.getContent().get(0).getId()).isEqualTo(MESSAGE_ID);
+            assertThat(result.getContent().getFirst().getId()).isEqualTo(MESSAGE_ID);
 
             verify(entityFinder).validateUserExists(USER_ID);
             verify(messageRepository).findBySenderIdOrderByTimestampDesc(USER_ID, pageable);

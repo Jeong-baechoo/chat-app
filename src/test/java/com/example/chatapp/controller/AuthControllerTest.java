@@ -1,6 +1,5 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.config.WebFilterConfig;
 import com.example.chatapp.domain.LoginSession;
 import com.example.chatapp.domain.User;
 import com.example.chatapp.exception.UnauthorizedException;
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -66,11 +64,11 @@ class AuthControllerTest {
         authResponseMap.put("username", validUser.getUsername());
         authResponseMap.put("expiresAt", System.currentTimeMillis() + 1800000);
 
-//        // Mock 기본 설정
-//        LoginSession validSession = new LoginSession(validUser.getId(), System.currentTimeMillis() + 1800000);
-//        when(sessionStore.getSession(validToken)).thenReturn(validSession);
-//        when(authService.isValidSession(validToken)).thenReturn(true);
-//        when(authService.getUserBySessionToken(validToken)).thenReturn(validUser);
+        // Mock 기본 설정
+        LoginSession validSession = new LoginSession(validUser.getId(), System.currentTimeMillis() + 1800000);
+        when(sessionStore.getSession(validToken)).thenReturn(validSession);
+        when(authService.isValidSession(validToken)).thenReturn(true);
+        when(authService.getUserBySessionToken(validToken)).thenReturn(validUser);
     }
 
     @Test

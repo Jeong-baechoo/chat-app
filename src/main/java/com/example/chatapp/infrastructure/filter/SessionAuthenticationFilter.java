@@ -1,7 +1,6 @@
 package com.example.chatapp.infrastructure.filter;
 
 import com.example.chatapp.domain.LoginSession;
-import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.infrastructure.session.SessionStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;

@@ -1,7 +1,6 @@
 package com.example.chatapp.config;
 
 import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
-import jakarta.servlet.Filter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

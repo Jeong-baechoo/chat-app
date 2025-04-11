@@ -28,8 +28,7 @@ public class InMemorySessionStore implements SessionStore {
 
     @Override
     public List<LoginSession> getAllSessions() {
-        List<LoginSession> sessionList = List.copyOf(sessions.values());
-        return sessionList;
+        return List.copyOf(sessions.values());
     }
 
     @Override

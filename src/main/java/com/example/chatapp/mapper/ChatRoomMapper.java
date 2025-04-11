@@ -4,12 +4,10 @@ import com.example.chatapp.domain.ChatRoom;
 import com.example.chatapp.domain.ChatRoomParticipant;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
-import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.dto.response.ParticipantResponse;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;

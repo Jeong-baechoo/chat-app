@@ -34,7 +34,7 @@ public class WebSocketController {
      * 메시지 전송
      */
     @MessageMapping("/message.send")
-    public void sendMessage(@Payload MessageCreateRequest request) throws Exception {
+    public void sendMessage(@Payload MessageCreateRequest request) {
         log.debug("WebSocket 메시지 전송: senderId={}, roomId={}",
                 request.getSenderId(), request.getChatRoomId());
 
@@ -52,7 +52,7 @@ public class WebSocketController {
      * 채팅방 입장
      */
     @MessageMapping("/room.enter")
-    public void enterRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) throws Exception {
+    public void enterRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor){
         Long userId = extractLongValue(payload, "userId");
         Long roomId = extractLongValue(payload, "roomId");
 
@@ -73,7 +73,7 @@ public class WebSocketController {
      * 채팅방 퇴장
      */
     @MessageMapping("/room.leave")
-    public void leaveRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) throws Exception {
+    public void leaveRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) {
         Long userId = extractLongValue(payload, "userId");
         Long roomId = extractLongValue(payload, "roomId");
 

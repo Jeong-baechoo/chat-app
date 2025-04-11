@@ -4,7 +4,6 @@ import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.request.ChatRoomJoinRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
-import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.infrastructure.auth.AuthContext;
 import com.example.chatapp.service.ChatRoomService;
 import jakarta.validation.Valid;

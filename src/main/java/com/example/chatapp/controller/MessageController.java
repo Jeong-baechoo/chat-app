@@ -2,7 +2,6 @@ package com.example.chatapp.controller;
 
 import com.example.chatapp.dto.request.MessageStatusUpdateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
-import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.service.MessageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
