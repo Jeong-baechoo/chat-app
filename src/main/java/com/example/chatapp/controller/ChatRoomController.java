@@ -5,13 +5,16 @@ import com.example.chatapp.dto.request.ChatRoomJoinRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.exception.ChatRoomException;
+import com.example.chatapp.infrastructure.auth.AuthContext;
 import com.example.chatapp.service.ChatRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -20,7 +23,7 @@ import java.util.List;
 @Slf4j
 public class ChatRoomController {
     private final ChatRoomService chatRoomService;
-
+    private final AuthContext authContext;
     /**
      * 전체 채팅방 목록 조회
      */
@@ -58,16 +61,24 @@ public class ChatRoomController {
      */
     @PostMapping
     public ResponseEntity<ChatRoomResponse> createRoom(
-            @Valid @RequestBody ChatRoomCreateRequest request) {
-        log.debug("채팅방 생성 API 요청: name={}, type={}, creatorId={}",
-                request.getName(), request.getType(), request.getCreatorId()); //세션에서 가져와야함
-        try {
-            ChatRoomResponse response = chatRoomService.createChatRoom(request);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.warn("채팅방 생성 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+            @Valid @RequestBody ChatRoomCreateRequest request,
+            @RequestAttribute("userId") Long userId) {
+        log.debug("채팅방 생성 API 요청: name={}, type={}",
+                request.getName(), request.getType());
+
+        // 인증된 사용자 ID를 creatorId로 설정
+        request.setCreatorId(userId);
+
+        ChatRoomResponse response = chatRoomService.createChatRoom(request);
+
+        // 생성된 리소스의 URI를 헤더에 포함
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(response.getId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(response);
     }
 
     /**
@@ -96,7 +107,8 @@ public class ChatRoomController {
         log.debug("채팅방 삭제 API 요청: id={}", id);
 
         try {
-            chatRoomService.deleteChatRoom(id);
+            Long currentUserId = authContext.getCurrentUserId();
+            chatRoomService.deleteChatRoom(id,currentUserId);
             return ResponseEntity.noContent().build();
         } catch (ChatRoomException e) {
             log.warn("채팅방 삭제 실패: {}", e.getMessage());

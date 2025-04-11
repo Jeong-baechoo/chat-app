@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,7 +40,7 @@ public class ChatRoomMapper {
         return ChatRoom.builder()
                 .name(request.getName())
                 .type(request.getType())
-                .participants(new ArrayList<>())
+                .participants(new HashSet<>())
                 .build();
     }
 

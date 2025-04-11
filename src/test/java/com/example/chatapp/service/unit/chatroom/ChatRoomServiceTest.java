@@ -19,12 +19,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,12 +58,6 @@ class ChatRoomServiceTest {
 
     @Mock
     private ChatRoomMapper chatRoomMapper;
-
-    @Mock
-    private SecurityContext securityContext;
-
-    @Mock
-    private Authentication authentication;
 
     private ChatRoomServiceImpl chatRoomService;
 
@@ -103,7 +95,7 @@ class ChatRoomServiceTest {
         testChatRoom.setName(TEST_ROOM_NAME);
         testChatRoom.setType(ChatRoomType.GROUP);
         testChatRoom.setCreatedAt(LocalDateTime.now());
-        List<ChatRoomParticipant> participants = new ArrayList<>();
+        HashSet<ChatRoomParticipant> participants = new HashSet<>();
         testChatRoom.setParticipants(participants);
 
         // 참가자 응답 설정
@@ -147,8 +139,6 @@ class ChatRoomServiceTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        // SecurityContext 목 설정
-        SecurityContextHolder.setContext(securityContext);
     }
 
     @Nested
@@ -272,50 +262,43 @@ class ChatRoomServiceTest {
     class DeleteChatRoomTests {
 
         @Test
-        @DisplayName("givenAdminUser_whenDeleteChatRoom_thenChatRoomDeleted")
+        @DisplayName("관리자 사용자가 채팅방 삭제 시 채팅방이 삭제되어야 함")
         void givenAdminUser_whenDeleteChatRoom_thenChatRoomDeleted() {
             // Given
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(authentication.getName()).thenReturn(ADMIN_USERNAME);
-            when(userRepository.findByUsername(ADMIN_USERNAME)).thenReturn(Optional.of(adminUser));
             when(chatRoomParticipantRepository.findByUserIdAndChatRoomId(ADMIN_ID, CHAT_ROOM_ID))
                     .thenReturn(Optional.of(adminParticipant));
-            when(securityContext.getAuthentication()).thenReturn(authentication);
 
             // When
-            chatRoomService.deleteChatRoom(CHAT_ROOM_ID);
+            chatRoomService.deleteChatRoom(CHAT_ROOM_ID, ADMIN_ID);
 
             // Then
             verify(chatRoomRepository).deleteById(CHAT_ROOM_ID);
         }
 
         @Test
-        @DisplayName("givenNonExistentChatRoom_whenDeleteChatRoom_thenThrowChatRoomException")
+        @DisplayName("존재하지 않는 채팅방 삭제 시 예외가 발생해야 함")
         void givenNonExistentChatRoom_whenDeleteChatRoom_thenThrowChatRoomException() {
             // Given
             when(chatRoomRepository.findById(NONEXISTENT_ID)).thenReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> chatRoomService.deleteChatRoom(NONEXISTENT_ID))
+            assertThatThrownBy(() -> chatRoomService.deleteChatRoom(NONEXISTENT_ID, ADMIN_ID))
                     .isInstanceOf(ChatRoomException.class);
 
             verify(chatRoomRepository, never()).deleteById(anyLong());
         }
 
         @Test
-        @DisplayName("givenNonAdminUser_whenDeleteChatRoom_thenThrowChatRoomException")
+        @DisplayName("일반 사용자가 채팅방 삭제 시 권한 예외가 발생해야 함")
         void givenNonAdminUser_whenDeleteChatRoom_thenThrowChatRoomException() {
             // Given
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(authentication.getName()).thenReturn(TEST_USERNAME);
-            when(userRepository.findByUsername(TEST_USERNAME)).thenReturn(Optional.of(testUser));
             when(chatRoomParticipantRepository.findByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID))
                     .thenReturn(Optional.of(testParticipant));
-            when(securityContext.getAuthentication()).thenReturn(authentication);
-
 
             // When & Then
-            assertThatThrownBy(() -> chatRoomService.deleteChatRoom(CHAT_ROOM_ID))
+            assertThatThrownBy(() -> chatRoomService.deleteChatRoom(CHAT_ROOM_ID, USER_ID))
                     .isInstanceOf(ChatRoomException.class);
 
             verify(chatRoomRepository, never()).deleteById(anyLong());

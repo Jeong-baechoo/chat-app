@@ -14,8 +14,6 @@ import com.example.chatapp.service.ChatRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,19 +105,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         return chatRoomMapper.toResponse(chatRoom);
     }
 
+
     @Override
     @Transactional
-    public void deleteChatRoom(Long chatRoomId) {
+    public void deleteChatRoom(Long chatRoomId, Long userId) {
         chatRoomRepository.findById(chatRoomId)
                 .orElseThrow(() -> new ChatRoomException("채팅방을 찾을 수 없습니다."));
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName(); // 사용자명으로 식별
-
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UserException("사용자를 찾을 수 없습니다."));
-
-        Long userId = user.getId();
 
         boolean isAdmin = participantRepo.findByUserIdAndChatRoomId(userId, chatRoomId)
                 .map(participant -> participant.getRole() == ParticipantRole.ADMIN)

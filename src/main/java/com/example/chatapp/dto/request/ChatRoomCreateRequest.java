@@ -23,6 +23,5 @@ public class ChatRoomCreateRequest {
 
     private List<Long> participantIds;
 
-    @NotNull(message = "생성자 ID는 필수입니다.")
     private Long creatorId;
 }
