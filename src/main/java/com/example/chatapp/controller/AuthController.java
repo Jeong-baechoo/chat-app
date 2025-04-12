@@ -22,9 +22,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-    // 세션 쿠키 이름
     private static final String SESSION_COOKIE_NAME = "SESSION_TOKEN";
-    // 쿠키 유효기간 (초 단위, 30분)
     private static final int COOKIE_MAX_AGE = 30 * 60;
 
     /**
@@ -122,7 +120,7 @@ public class AuthController {
         if (sessionToken == null) {
             throw new UnauthorizedException("인증이 필요합니다");
         }
-        
+
         if (!authService.isValidSession(sessionToken)) {
             throw new UnauthorizedException("세션이 만료되었습니다");
         }
