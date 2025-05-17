@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 웹 필터 설정 클래스
  */
-@Configuration
+//@Configuration
 public class WebFilterConfig {
 
     /**

@@ -64,7 +64,7 @@ public class MessageServiceImpl implements MessageService {
         Message savedMessage = messageRepository.save(message);
 
         // 이벤트 발행
-        eventPublisher.publishMessageCreatedEvent(savedMessage);
+//        eventPublisher.publishMessageCreatedEvent(savedMessage);
 
         log.debug("메시지 저장 완료: id={}, senderId={}, chatRoomId={}",
                 savedMessage.getId(), sender.getId(), chatRoom.getId());

@@ -158,7 +158,6 @@ class MessageServiceTest {
             verify(messageDomainService).canUserSendMessage(testUser, testChatRoom);
             verify(messageDomainService).createMessage(TEST_MESSAGE_CONTENT, testUser, testChatRoom);
             verify(messageRepository).save(testMessage);
-            verify(messageEventPublisher).publishMessageCreatedEvent(testMessage);
         }
 
         @Test

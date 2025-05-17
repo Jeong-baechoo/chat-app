@@ -22,7 +22,7 @@ import java.util.Map;
  * 모든 요청에 대해 인증을 검사하고 처리
  * AuthInterceptor와의 중복 기능을 통합
  */
-@Component
+//@Component
 @RequiredArgsConstructor
 @Slf4j
 public class SessionAuthenticationFilter extends OncePerRequestFilter {

@@ -1,6 +1,8 @@
 package com.example.chatapp.repository;
 
+import com.example.chatapp.domain.ChatRoom;
 import com.example.chatapp.domain.ChatRoomParticipant;
+import com.example.chatapp.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,4 +13,6 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
     List<ChatRoomParticipant> findByUserId(Long userId);
 
     Optional<ChatRoomParticipant> findByUserIdAndChatRoomId(Long userId, Long chatRoomId);
+
+    boolean existsByUserAndChatRoom(User user, ChatRoom chatRoom);
 }

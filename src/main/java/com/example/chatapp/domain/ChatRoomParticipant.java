@@ -11,7 +11,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "chat_room_participants")
+@Table(name = "chat_room_participants",
+        indexes = {
+                @Index(name = "idx_user_chatroom", columnList = "user_id,chat_room_id", unique = true)
+        }
+)
 public class ChatRoomParticipant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
