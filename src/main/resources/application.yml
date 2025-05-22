@@ -21,16 +21,6 @@ spring:
   profiles:
     active: dev
 
-  # RabbitMQ 설정
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
-    # 발행자 확인
-    publisher-returns: true
-    publisher-confirm-type: correlated
   web:
     cors:
         allowed-origins: http://localhost:3000
