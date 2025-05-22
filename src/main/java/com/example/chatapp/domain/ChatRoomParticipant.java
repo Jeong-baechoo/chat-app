@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "chat_room_participants",
         indexes = {
-                @Index(name = "idx_user_chatroom", columnList = "user_id,chat_room_id", unique = true)
+                @Index(name = "idx_user_chatroom", columnList = "user_id,chat_room_id")
         }
 )
 public class ChatRoomParticipant {

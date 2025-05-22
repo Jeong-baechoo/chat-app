@@ -6,6 +6,7 @@ import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.mapper.MessageMapper;
+import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.service.EntityFinderService;
 import com.example.chatapp.service.MessageEventPublisher;
@@ -18,7 +19,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +34,7 @@ import java.util.stream.Collectors;
 public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final MessageDomainService messageDomainService;
+    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final MessageMapper messageMapper;
     private final EntityFinderService entityFinder;
     private final MessageValidator validator;
@@ -50,21 +54,30 @@ public class MessageServiceImpl implements MessageService {
         // 메시지 요청 검증
         validator.validateMessageRequest(request);
 
-        // 엔티티 조회
-        User sender = entityFinder.findUserById(request.getSenderId());
-        ChatRoom chatRoom = entityFinder.findChatRoomById(request.getChatRoomId());
+        Optional<ChatRoomParticipant> participantOpt = chatRoomParticipantRepository
+                .findByUserIdAndChatRoomId(request.getSenderId(), request.getChatRoomId());
 
-        // 채팅방 참여자 여부 검증
-        if (!messageDomainService.canUserSendMessage(sender, chatRoom)) {
+        if (participantOpt.isEmpty()) {
             throw new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다");
         }
 
+        ChatRoomParticipant participant = participantOpt.get();
+        User sender = participant.getUser();
+        ChatRoom chatRoom = participant.getChatRoom();
+
         // 메시지 생성 및 저장
-        Message message = messageDomainService.createMessage(request.getContent(), sender, chatRoom);
+        Message message = Message.builder()
+                .content(request.getContent())
+                .sender(sender)
+                .chatRoom(chatRoom)
+                .status(MessageStatus.SENT)
+                .timestamp(LocalDateTime.now())
+                .build();
+
         Message savedMessage = messageRepository.save(message);
 
-        // 이벤트 발행
-//        eventPublisher.publishMessageCreatedEvent(savedMessage);
+        // 이벤트 발행 (필요시 주석 해제)
+        // eventPublisher.publishMessageCreatedEvent(savedMessage);
 
         log.debug("메시지 저장 완료: id={}, senderId={}, chatRoomId={}",
                 savedMessage.getId(), sender.getId(), chatRoom.getId());
