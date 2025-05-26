@@ -17,10 +17,8 @@ configurations {
     compileOnly {
         extendsFrom annotationProcessor
     }
-    // 로깅 관련 의존성 충돌 해결
-    all {
-        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
-    }
+    // 로깅 설정을 Logback으로 통일
+    // 더 이상 로깅 프레임워크 제외 설정이 필요없음
 }
 
 repositories {
@@ -33,12 +31,21 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // spring-boot-starter-logging는 web 등의 스타터에 이미 포함되어 있으므로 별도 선언 불필요
 
-    // 로깅 관련 의존성 - Logback 대신 Log4j2 사용
-    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+    // Log4j2 관련 의존성 제거
+    // implementation 'org.springframework.boot:spring-boot-starter-log4j2'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // Log4j2 직접 의존성 제거
+    // implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
+    // implementation 'org.apache.logging.log4j:log4j-api:2.19.0'
+//    implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0'
 
     testImplementation 'org.testcontainers:mysql'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:kafka'
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.h2database:h2'
     testImplementation 'com.h2database:h2'
