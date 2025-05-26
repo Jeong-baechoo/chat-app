@@ -23,11 +23,12 @@ import java.util.List;
 public class ChatRoomController {
     private final ChatRoomService chatRoomService;
     private final AuthContext authContext;
+
     /**
      * 전체 채팅방 목록 조회
      */
     @GetMapping
-    public ResponseEntity<?> getAllRooms() {
+    public ResponseEntity<List<ChatRoomSimpleResponse>> getAllRooms() {
         log.debug("전체 채팅방 조회 API 요청");
         List<ChatRoomSimpleResponse> response = chatRoomService.findAllChatRoomsSimple();
         return ResponseEntity.ok(response);
@@ -35,10 +36,10 @@ public class ChatRoomController {
 
     /**
      * 현재 사용자가 참여한 채팅방 목록 조회
-     * 세션을 사용해서 참가자 id 얻을것
      */
     @GetMapping("/me")
-    public ResponseEntity<List<ChatRoomResponse>> getMyRooms(@RequestParam Long userId) {
+    public ResponseEntity<List<ChatRoomResponse>> getMyRooms() {
+        Long userId = authContext.getCurrentUserId();
         log.debug("사용자별 채팅방 조회 API 요청: userId={}", userId);
         List<ChatRoomResponse> response = chatRoomService.findChatRoomsByUser(userId);
         return ResponseEntity.ok(response);
@@ -59,11 +60,10 @@ public class ChatRoomController {
      * 채팅방 생성
      */
     @PostMapping
-    public ResponseEntity<ChatRoomResponse> createRoom(
-            @Valid @RequestBody ChatRoomCreateRequest request,
-            @RequestAttribute("userId") Long userId) {
-        log.debug("채팅방 생성 API 요청: name={}, type={}",
-                request.getName(), request.getType());
+    public ResponseEntity<ChatRoomResponse> createRoom(@Valid @RequestBody ChatRoomCreateRequest request) {
+        Long userId = authContext.getCurrentUserId();
+        log.debug("채팅방 생성 API 요청: name={}, type={}, userId={}",
+                request.getName(), request.getType(), userId);
 
         // 인증된 사용자 ID를 creatorId로 설정
         request.setCreatorId(userId);
@@ -84,11 +84,10 @@ public class ChatRoomController {
      * 채팅방 참여
      */
     @PostMapping("/{id}/join")
-    public ResponseEntity<ChatRoomResponse> joinRoom(
-            @PathVariable Long id,
-            @Valid @RequestBody ChatRoomJoinRequest request) {
-        log.debug("채팅방 참여 API 요청: roomId={}, userId={}", id, request.getUserId());
-        ChatRoomResponse response = chatRoomService.addParticipantToChatRoom(id, request.getUserId());
+    public ResponseEntity<ChatRoomResponse> joinRoom(@PathVariable Long id) {
+        Long userId = authContext.getCurrentUserId();
+        log.debug("채팅방 참여 API 요청: roomId={}, userId={}", id, userId);
+        ChatRoomResponse response = chatRoomService.addParticipantToChatRoom(id, userId);
         return ResponseEntity.ok(response);
     }
 

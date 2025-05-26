@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.Set;
 
 /**
  * 메시지 영구 저장을 담당하는 Consumer
@@ -32,12 +31,49 @@ public class MessagePersistenceConsumer {
     private final MessageRepository messageRepository;
     private final EntityFinderService entityFinderService;
 
-    @KafkaListener(
-        topics = KafkaConfig.CHAT_MESSAGES_TOPIC,
-        groupId = "message-batch-persistence-group",
-        containerFactory = "batchKafkaListenerContainerFactory",
-        batch = "true"
-    )
+//    @KafkaListener(
+//        topics = KafkaConfig.CHAT_MESSAGES_TOPIC,
+//        groupId = "message-persistence-group",
+//        containerFactory = "kafkaListenerContainerFactory"
+//    )
+    @Transactional
+    public void persistMessage(
+            @Payload ChatEvent event,
+            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
+            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
+            @Header(KafkaHeaders.OFFSET) long offset,
+            Acknowledgment ack) {
+
+        try {
+            if (log.isDebugEnabled()) {
+                log.debug("메시지 저장 이벤트 수신: eventType={}, messageId={}",
+                        event.getEventType(), event.getMessageId());
+            }
+
+            // 메시지 관련 이벤트만 처리
+            if (event.getEventType() == ChatEventType.MESSAGE_SENT && event.getMessageId() != null) {
+                // 이미 저장된 메시지인지 확인 (중복 방지)
+                if (!messageRepository.existsById(event.getMessageId())) {
+                    log.warn("메시지 ID {}가 데이터베이스에 없습니다. 이미 처리되었거나 잘못된 이벤트일 수 있습니다.",
+                            event.getMessageId());
+                }
+            }
+
+            ack.acknowledge();
+
+        } catch (Exception e) {
+            log.error("메시지 저장 처리 실패: eventType={}, messageId={}, error={}",
+                    event.getEventType(), event.getMessageId(), e.getMessage(), e);
+            ack.acknowledge(); // 실패해도 ack하여 무한 재시도 방지
+        }
+    }
+
+//    @KafkaListener(
+//        topics = KafkaConfig.CHAT_MESSAGES_TOPIC,
+//        groupId = "message-batch-persistence-group",
+//        containerFactory = "batchKafkaListenerContainerFactory",
+//        batch = "true"
+//    )
     @Transactional
     public void persistMessageBatch(
             @Payload List<ChatEvent> events,
@@ -61,28 +97,8 @@ public class MessagePersistenceConsumer {
                         .map(ChatEvent::getMessageId)
                         .collect(Collectors.toList());
 
-                // 데이터베이스에서 존재하는 메시지 확인
-                List<Message> existingMessages = messageRepository.findAllById(messageIds);
-
-                // 존재하는 메시지 ID 집합
-                Set<Long> existingIds = existingMessages.stream()
-                        .map(Message::getId)
-                        .collect(Collectors.toSet());
-
-                // 업데이트가 필요한 메시지 처리
-                // 예: 읽음 상태 업데이트 등
-                List<Message> messagesToUpdate = existingMessages.stream()
-                        .filter(msg -> messageEvents.stream()
-                                .anyMatch(event -> event.getMessageId().equals(msg.getId()) &&
-                                         event.getMessageStatus() != null &&
-                                         !event.getMessageStatus().equals(msg.getStatus().name())))
-                        .collect(Collectors.toList());
-
-                if (!messagesToUpdate.isEmpty()) {
-                    // 상태 업데이트가 필요한 메시지 일괄 업데이트
-                    messageRepository.saveAll(messagesToUpdate);
-                    log.debug("메시지 상태 배치 업데이트 완료: {}개", messagesToUpdate.size());
-                }
+                // 실제 운영에서는 배치 처리 로직 구현
+                // 예: 메시지 읽음 상태 업데이트, 검색 인덱스 업데이트 등
 
                 if (log.isDebugEnabled()) {
                     log.debug("메시지 배치 처리 완료: {}개 메시지", messageIds.size());

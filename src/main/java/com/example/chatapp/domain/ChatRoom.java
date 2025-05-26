@@ -9,9 +9,8 @@ import java.util.Set;
 
 @Entity
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 @Table(name = "chat_rooms")
 public class ChatRoom {
@@ -35,5 +34,24 @@ public class ChatRoom {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    /**
+     * 채팅방에 참여자 추가
+     */
+    public void addParticipant(ChatRoomParticipant participant) {
+        if (participants == null) {
+            participants = new HashSet<>();
+        }
+        participants.add(participant);
+        participant.setChatRoom(this);
+    }
+
+    /**
+     * 채팅방에서 참여자 제거
+     */
+    public void removeParticipant(ChatRoomParticipant participant) {
+        participants.remove(participant);
+        participant.setChatRoom(null);
     }
 }

@@ -42,10 +42,8 @@ public class MessageDeliveryConsumer {
             Acknowledgment ack) {
 
         try {
-            if (log.isDebugEnabled()) {
-                log.debug("메시지 이벤트 수신: eventType={}, roomId={}, eventId={}",
-                        event.getEventType(), event.getChatRoomId(), event.getEventId());
-            }
+            log.debug("메시지 이벤트 수신: eventType={}, roomId={}, eventId={}",
+                    event.getEventType(), event.getChatRoomId(), event.getEventId());
 
             // WebSocket을 통해 채팅방 참여자들에게 실시간 전송
             webSocketService.broadcastToRoom(event.getChatRoomId(), event);
@@ -53,10 +51,8 @@ public class MessageDeliveryConsumer {
             // 수동 커밋
             ack.acknowledge();
 
-            if (log.isDebugEnabled()) {
-                log.debug("메시지 전달 완료: eventType={}, roomId={}",
-                        event.getEventType(), event.getChatRoomId());
-            }
+            log.debug("메시지 전달 완료: eventType={}, roomId={}",
+                    event.getEventType(), event.getChatRoomId());
 
         } catch (Exception e) {
             log.error("메시지 전달 실패: eventType={}, roomId={}, error={}",
@@ -71,21 +67,19 @@ public class MessageDeliveryConsumer {
     /**
      * 배치 메시지 처리 리스너
      */
-    @KafkaListener(
-        topics = KafkaConfig.CHAT_MESSAGES_TOPIC,
-        groupId = "message-batch-delivery-group",
-        containerFactory = "batchKafkaListenerContainerFactory",
-        batch = "true"
-    )
+//    @KafkaListener(
+//        topics = KafkaConfig.CHAT_MESSAGES_TOPIC,
+//        groupId = "message-batch-delivery-group",
+//        containerFactory = "batchKafkaListenerContainerFactory",
+//        batch = "true"
+//    )
     public void handleMessageEventsBatch(
             @Payload List<ChatEvent> events,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
             Acknowledgment ack) {
 
         try {
-            if (log.isDebugEnabled()) {
-                log.debug("메시지 이벤트 배치 수신: 총 {}개 이벤트", events.size());
-            }
+            log.debug("메시지 이벤트 배치 수신: 총 {}개 이벤트", events.size());
 
             // 채팅방별로 이벤트 그룹화
             Map<Long, List<ChatEvent>> roomEvents = events.stream()
@@ -99,10 +93,8 @@ public class MessageDeliveryConsumer {
                 // WebSocket을 통해 채팅방 참여자들에게 실시간 전송 (배치)
                 webSocketService.broadcastBatchToRoom(roomId, roomMessages);
 
-                if (log.isDebugEnabled()) {
-                    log.debug("채팅방 {} 메시지 배치 전달 완료: {}개 메시지",
-                            roomId, roomMessages.size());
-                }
+                log.debug("채팅방 {} 메시지 배치 전달 완료: {}개 메시지",
+                        roomId, roomMessages.size());
             }
 
             // 수동 커밋
@@ -126,20 +118,16 @@ public class MessageDeliveryConsumer {
             Acknowledgment ack) {
 
         try {
-            if (log.isDebugEnabled()) {
-                log.debug("룸 이벤트 수신: eventType={}, roomId={}, eventId={}",
-                        event.getEventType(), event.getChatRoomId(), event.getEventId());
-            }
+            log.debug("룸 이벤트 수신: eventType={}, roomId={}, eventId={}",
+                    event.getEventType(), event.getChatRoomId(), event.getEventId());
 
             // 채팅방 이벤트도 실시간으로 전송 (입장/퇴장 등)
             webSocketService.broadcastToRoom(event.getChatRoomId(), event);
 
             ack.acknowledge();
 
-            if (log.isDebugEnabled()) {
-                log.debug("룸 이벤트 전달 완료: eventType={}, roomId={}",
-                        event.getEventType(), event.getChatRoomId());
-            }
+            log.debug("룸 이벤트 전달 완료: eventType={}, roomId={}",
+                    event.getEventType(), event.getChatRoomId());
 
         } catch (Exception e) {
             log.error("룸 이벤트 전달 실패: eventType={}, roomId={}, error={}",
