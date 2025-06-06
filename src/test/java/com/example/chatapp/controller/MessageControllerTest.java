@@ -63,7 +63,7 @@ public class MessageControllerTest {
         );
 
         Page<MessageResponse> messagePage = new PageImpl<>(messageList, pageable, messageList.size());
-        when(messageService.getChatRoomMessages(eq(roomId), any(Pageable.class))).thenReturn(messagePage);
+        when(messageService.findChatRoomMessages(roomId, pageable)).thenReturn(messagePage);
 
         // When & Then
         mockMvc.perform(get("/api/messages/room/{roomId}", roomId)
@@ -81,7 +81,6 @@ public class MessageControllerTest {
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.size").value(size));
 
-        verify(messageService).getChatRoomMessages(eq(roomId), any(Pageable.class));
     }
 
     @Test
@@ -97,7 +96,7 @@ public class MessageControllerTest {
                 createMessageResponse(1L, "Message 1", 2L, roomId)
         );
 
-        when(messageService.getRecentChatRoomMessages(roomId, limit)).thenReturn(messages);
+        when(messageService.findRecentChatRoomMessages(roomId, limit)).thenReturn(messages);
 
         // When & Then
         mockMvc.perform(get("/api/messages/room/{roomId}/recent", roomId)
@@ -112,7 +111,7 @@ public class MessageControllerTest {
                 .andExpect(jsonPath("$[2].id").value(1L))
                 .andExpect(jsonPath("$[2].content").value("Message 1"));
 
-        verify(messageService).getRecentChatRoomMessages(roomId, limit);
+        verify(messageService).findRecentChatRoomMessages(roomId, limit);
     }
 
     @Test

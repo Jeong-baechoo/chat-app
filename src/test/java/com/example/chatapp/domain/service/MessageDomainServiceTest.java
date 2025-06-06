@@ -2,6 +2,7 @@ package com.example.chatapp.domain.service;
 
 import com.example.chatapp.domain.*;
 import com.example.chatapp.exception.MessageException;
+import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,9 @@ class MessageDomainServiceTest {
     @InjectMocks
     private MessageDomainService messageDomainService;
 
+    @Mock
+    private ChatRoomParticipantRepository chatRoomParticipantRepository;
+
     // 실제 객체들은 Mock 대신 실제 객체로 사용 (도메인 서비스 테스트이기 때문에)
     private User user;
     private User otherUser;
@@ -34,58 +38,76 @@ class MessageDomainServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Given: 사용자 설정 - 테스트용 간단한 생성
+        user = createTestUser(1L, "user");
+        otherUser = createTestUser(2L, "otherUser");
+        adminUser = createTestUser(3L, "adminUser");
 
-        // Given: 사용자 설정
-        user = User.builder()
-                .id(1L)
-                .username("user")
-                .build();
-
-        otherUser = User.builder()
-                .id(2L)
-                .username("otherUser")
-                .build();
-
-        adminUser = User.builder()
-                .id(3L)
-                .username("adminUser")
-                .build();
+        // Given: 채팅방 설정 - 테스트용 간단한 생성
+        chatRoom = createTestChatRoom(1L, "Test Room");
 
         // Given: 채팅방 참여자 설정
-        participant = new ChatRoomParticipant();
-        participant.setUser(user);
-        participant.setRole(ParticipantRole.MEMBER);
+        participant = createTestParticipant(user, chatRoom, ParticipantRole.MEMBER);
+        adminParticipant = createTestParticipant(adminUser, chatRoom, ParticipantRole.ADMIN);
 
-        adminParticipant = new ChatRoomParticipant();
-        adminParticipant.setUser(adminUser);
-        adminParticipant.setRole(ParticipantRole.ADMIN);
+        // Given: 채팅방에 참여자 추가
+        chatRoom.addParticipantInternal(user, ParticipantRole.MEMBER);
+        chatRoom.addParticipantInternal(adminUser, ParticipantRole.ADMIN);
 
-        // Given: 채팅방 설정
-        chatRoom = new ChatRoom();
-        chatRoom.setId(1L);
-        chatRoom.setName("Test Room");
+        // Given: 메시지 설정 - 테스트용 간단한 생성
+        message = createTestMessage(1L, "테스트 메시지", user, chatRoom);
 
-        // Given: 채팅방 참여자 설정
-        Set<ChatRoomParticipant> participants = new HashSet<>();
-        participants.add(participant);
-        participants.add(adminParticipant);
-        chatRoom.setParticipants(participants);
+        // Mock 설정은 각 테스트에서 필요시 개별 설정
+    }
 
-        // Given: 메시지 설정
-        message = Message.builder()
-                .id(1L)
-                .sender(user)
-                .chatRoom(chatRoom)
-                .content("테스트 메시지")
-                .status(MessageStatus.SENT)
-                .timestamp(LocalDateTime.now())
-                .build();
+    // 테스트용 헬퍼 메서드들
+    private User createTestUser(Long id, String username) {
+        User user = User.create(username, "encoded_password");
+        // ReflectionTestUtils를 사용해 테스트용 ID 설정
+        setIdUsingReflection(user, id);
+        return user;
+    }
+
+    private ChatRoom createTestChatRoom(Long id, String name) {
+        // 임시 사용자로 채팅방 생성 후 실제 참여자는 별도로 추가
+        User tempUser = User.create("temp", "encoded_password");
+        setIdUsingReflection(tempUser, 999L); // 임시 사용자에게도 ID 설정
+        ChatRoom chatRoom = ChatRoom.create(name, ChatRoomType.GROUP, tempUser);
+        setIdUsingReflection(chatRoom, id);
+        return chatRoom;
+    }
+
+    private ChatRoomParticipant createTestParticipant(User user, ChatRoom chatRoom, ParticipantRole role) {
+        ChatRoomParticipant participant = ChatRoomParticipant.of(user, chatRoom, role);
+        return participant;
+    }
+
+    private Message createTestMessage(Long id, String content, User sender, ChatRoom chatRoom) {
+        // 도메인 서비스를 통해 메시지 생성
+        Message message = messageDomainService.createMessage(content, sender, chatRoom);
+        setIdUsingReflection(message, id);
+        return message;
+    }
+
+    // 리플렉션을 사용해 private 필드에 값 설정 (테스트용)
+    private void setIdUsingReflection(Object target, Long id) {
+        try {
+            Class<?> clazz = target.getClass();
+            java.lang.reflect.Field field = clazz.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(target, id);
+        } catch (Exception e) {
+            // 리플렉션 실패 시 디버깅 정보 출력
+            System.err.println("Failed to set ID for " + target.getClass().getSimpleName() + ": " + e.getMessage());
+            throw new RuntimeException("Failed to set field ID", e);
+        }
     }
 
     @Test
     @DisplayName("사용자가 메시지를 전송할 수 있는지 확인 - 참여자인 경우")
     void givenUserIsParticipant_whenCheckCanSendMessage_thenReturnTrue() {
-        // Given: 참여자인 사용자 (setUp에서 설정됨)
+        // Given: 참여자인 사용자
+        when(chatRoomParticipantRepository.existsByUserAndChatRoom(user, chatRoom)).thenReturn(true);
 
         // When: 메시지 전송 권한 확인
         boolean result = messageDomainService.canUserSendMessage(user, chatRoom);

@@ -51,11 +51,7 @@ class AuthControllerTest {
         validUsername = "testuser";
         validPassword = "password123";
         validToken = UUID.randomUUID().toString();
-        validUser = User.builder()
-                .id(1L)
-                .username(validUsername)
-                .password("encodedPassword")
-                .build();
+        validUser = User.create(validUsername, validPassword);
 
         // 인증 응답 맵 준비
         authResponseMap = new HashMap<>();
@@ -106,8 +102,8 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("Invalid credentials"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("Invalid credentials"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
     }
 
     @Test
@@ -156,10 +152,10 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(Map.of("username", existingUsername, "password", password))));
 
         // then
-        resultActions.andExpect(status().isBadRequest())
+        resultActions.andExpect(status().isConflict())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("이미 사용 중인 사용자명입니다"))
-                .andExpect(jsonPath("$.status").value(400));
+                .andExpect(jsonPath("$.message").value("이미 사용 중인 사용자명입니다"))
+                .andExpect(jsonPath("$.status").value("CONFLICT"));
 
         verify(authService, times(1)).signup(existingUsername, password);
     }
@@ -173,8 +169,8 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("인증이 필요합니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("인증이 필요합니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
         verify(authService, never()).validateToken(any());
     }
@@ -219,8 +215,8 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("유효하지 않은 세션입니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("유효하지 않은 세션입니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
         verify(authService, times(1)).validateToken(invalidToken);
     }
@@ -318,8 +314,8 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("세션이 만료되었습니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("세션이 만료되었습니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
         verify(authService, never()).getUserBySessionToken(any());
     }
@@ -333,8 +329,8 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("인증이 필요합니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("인증이 필요합니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
         // 토큰이 없으므로 서비스 메소드는 호출되지 않아야 함
         verify(authService, never()).isValidSession(any());
@@ -359,8 +355,8 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("사용자를 찾을 수 없습니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
         verify(authService, times(1)).isValidSession(validTokenNoUser);
         verify(authService, times(1)).getUserBySessionToken(validTokenNoUser);

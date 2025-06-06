@@ -105,11 +105,11 @@ class ChatRoomControllerTest {
                         .build()
         );
 
+        when(authContext.getCurrentUserId()).thenReturn(userId);
         when(chatRoomService.findChatRoomsByUser(userId)).thenReturn(chatRooms);
 
         // When & Then
-        mockMvc.perform(get("/api/rooms/me")
-                .param("userId", userId.toString()))
+        mockMvc.perform(get("/api/rooms/me"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(2)))
@@ -184,13 +184,13 @@ class ChatRoomControllerTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        when(authContext.getCurrentUserId()).thenReturn(userId);
         when(chatRoomService.createChatRoom(any(ChatRoomCreateRequest.class))).thenReturn(response);
 
         // When & Then
         mockMvc.perform(post("/api/rooms")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .requestAttr("userId", userId))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(5L))
@@ -234,6 +234,7 @@ class ChatRoomControllerTest {
                 .createdAt(LocalDateTime.now().minusDays(1))
                 .build();
 
+        when(authContext.getCurrentUserId()).thenReturn(userId);
         when(chatRoomService.addParticipantToChatRoom(roomId, userId)).thenReturn(response);
 
         // When & Then

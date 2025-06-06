@@ -48,7 +48,7 @@ class ChatEventProducerTest {
         chatEventProducer.sendMessageEvent(event);
 
         // Then
-        verify(kafkaTemplate).send(eq("chat-messages"), eq("room-1"), eq(event));
+        verify(kafkaTemplate).send(eq("chat-messages-v2"), eq("room-1"), eq(event));
     }
 
     @Test
@@ -72,7 +72,7 @@ class ChatEventProducerTest {
         chatEventProducer.sendChatRoomEvent(event);
 
         // Then
-        verify(kafkaTemplate).send(eq("chat-events"), eq("room-1"), eq(event));
+        verify(kafkaTemplate).send(eq("chat-events-v2"), eq("room-1"), eq(event));
     }
 
     @Test
@@ -96,6 +96,6 @@ class ChatEventProducerTest {
         chatEventProducer.sendNotificationEvent(event);
 
         // Then
-        verify(kafkaTemplate).send(eq("chat-notifications"), eq("user-2"), eq(event));
+        verify(kafkaTemplate).send(eq("chat-notifications-v2"), eq("user-2"), eq(event));
     }
 }

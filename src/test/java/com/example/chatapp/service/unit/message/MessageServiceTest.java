@@ -7,6 +7,7 @@ import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
+import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.MessageMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,41 +68,35 @@ class MessageServiceTest {
     @Mock
     private MessageValidator validator;
 
+    @Mock
+    private ChatEventPublisherService eventPublisher;
+
+    @InjectMocks
     private MessageServiceImpl messageService;
 
     private User testUser;
     private ChatRoom testChatRoom;
     private Message testMessage;
+    private ChatRoomParticipant testParticipant;
     private MessageCreateRequest validMessageRequest;
     private MessageResponse messageResponse;
 
     @BeforeEach
     void setUp() {
         // 테스트 사용자 설정
-        testUser = User.builder()
-                .id(USER_ID)
-                .username("testUser")
-                .password("password")
-                .build();
+        testUser = createTestUser(USER_ID, "testUser");
 
         // 테스트 채팅방 설정
-        testChatRoom = new ChatRoom();
-        testChatRoom.setId(CHAT_ROOM_ID);
-        testChatRoom.setName("Test Room");
+        testChatRoom = createTestChatRoom(CHAT_ROOM_ID, "Test Room");
 
         // 테스트 메시지 설정
-        testMessage = Message.builder()
-                .id(MESSAGE_ID)
-                .sender(testUser)
-                .chatRoom(testChatRoom)
-                .content(TEST_MESSAGE_CONTENT)
-                .status(MessageStatus.SENT)
-                .timestamp(LocalDateTime.now())
-                .build();
+        testMessage = createTestMessage(MESSAGE_ID, TEST_MESSAGE_CONTENT, testUser, testChatRoom);
+
+        // 테스트 참가자 설정
+        testParticipant = createTestParticipant(1L, testUser, testChatRoom, ParticipantRole.MEMBER);
 
         // 유효한 메시지 요청 DTO 설정
         validMessageRequest = new MessageCreateRequest();
-        validMessageRequest.setSenderId(USER_ID);
         validMessageRequest.setChatRoomId(CHAT_ROOM_ID);
         validMessageRequest.setContent(TEST_MESSAGE_CONTENT);
 
@@ -114,6 +111,49 @@ class MessageServiceTest {
                 .build();
     }
 
+    // 테스트용 헬퍼 메서드들
+    private User createTestUser(Long id, String username) {
+        User user = User.create(username, "encoded_password");
+        setField(user, "id", id);
+        return user;
+    }
+
+    private ChatRoom createTestChatRoom(Long id, String name) {
+        User tempUser = User.create("temp", "encoded_password");
+        ChatRoom chatRoom = ChatRoom.create(name, ChatRoomType.GROUP, tempUser);
+        setField(chatRoom, "id", id);
+        return chatRoom;
+    }
+
+    private Message createTestMessage(Long id, String content, User sender, ChatRoom chatRoom) {
+        Message message = Message.builder()
+                .sender(sender)
+                .chatRoom(chatRoom)
+                .content(content)
+                .status(MessageStatus.SENT)
+                .timestamp(LocalDateTime.now())
+                .build();
+        setField(message, "id", id);
+        return message;
+    }
+
+    private ChatRoomParticipant createTestParticipant(Long id, User user, ChatRoom chatRoom, ParticipantRole role) {
+        ChatRoomParticipant participant = ChatRoomParticipant.of(user, chatRoom, role);
+        setField(participant, "id", id);
+        return participant;
+    }
+
+    // 리플렉션을 사용해 private 필드에 값 설정 (테스트용)
+    private void setField(Object target, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set field: " + fieldName, e);
+        }
+    }
+
     @Nested
     @DisplayName("메시지 전송 테스트")
     class SendMessageTests {
@@ -122,11 +162,10 @@ class MessageServiceTest {
         @DisplayName("givenValidRequest_whenSendMessage_thenReturnMessageResponse")
         void givenValidRequest_whenSendMessage_thenReturnMessageResponse() {
             // Given
-            when(entityFinder.findUserById(USER_ID)).thenReturn(testUser);
-            when(entityFinder.findChatRoomById(CHAT_ROOM_ID)).thenReturn(testChatRoom);
-            when(messageDomainService.canUserSendMessage(testUser, testChatRoom)).thenReturn(true);
+            when(chatRoomParticipantRepository.findByUserIdAndChatRoomIdWithUserAndChatRoom(USER_ID, CHAT_ROOM_ID))
+                    .thenReturn(Optional.of(testParticipant));
             when(messageDomainService.createMessage(TEST_MESSAGE_CONTENT, testUser, testChatRoom)).thenReturn(testMessage);
-            when(messageRepository.save(any(Message.class))).thenReturn(testMessage);
+            when(messageRepository.save(testMessage)).thenReturn(testMessage);
             when(messageMapper.toResponse(testMessage)).thenReturn(messageResponse);
 
             // When
@@ -139,20 +178,19 @@ class MessageServiceTest {
 
             // 핵심 관심사 검증
             verify(validator).validateMessageRequest(validMessageRequest);
-            verify(entityFinder).findUserById(USER_ID);
-            verify(entityFinder).findChatRoomById(CHAT_ROOM_ID);
-            verify(messageDomainService).canUserSendMessage(testUser, testChatRoom);
+            verify(chatRoomParticipantRepository).findByUserIdAndChatRoomIdWithUserAndChatRoom(USER_ID, CHAT_ROOM_ID);
             verify(messageDomainService).createMessage(TEST_MESSAGE_CONTENT, testUser, testChatRoom);
             verify(messageRepository).save(testMessage);
+            verify(eventPublisher).publishMessageEvent(testMessage, testUser);
+            verify(messageMapper).toResponse(testMessage);
         }
 
         @Test
         @DisplayName("givenNonParticipant_whenSendMessage_thenThrowMessageException")
         void givenNonParticipant_whenSendMessage_thenThrowMessageException() {
             // Given
-            when(entityFinder.findUserById(USER_ID)).thenReturn(testUser);
-            when(entityFinder.findChatRoomById(CHAT_ROOM_ID)).thenReturn(testChatRoom);
-            when(messageDomainService.canUserSendMessage(testUser, testChatRoom)).thenReturn(false);
+            when(chatRoomParticipantRepository.findByUserIdAndChatRoomIdWithUserAndChatRoom(USER_ID, CHAT_ROOM_ID))
+                    .thenReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> messageService.sendMessage(validMessageRequest, USER_ID))
@@ -161,8 +199,9 @@ class MessageServiceTest {
 
             // 검증
             verify(validator).validateMessageRequest(validMessageRequest);
-            verify(messageDomainService).canUserSendMessage(testUser, testChatRoom);
+            verify(chatRoomParticipantRepository).findByUserIdAndChatRoomIdWithUserAndChatRoom(USER_ID, CHAT_ROOM_ID);
             verify(messageRepository, never()).save(any(Message.class));
+            verify(eventPublisher, never()).publishMessageEvent(any(), any());
         }
     }
 
@@ -184,7 +223,7 @@ class MessageServiceTest {
             when(messageMapper.toResponse(testMessage)).thenReturn(messageResponse);
 
             // When
-            Page<MessageResponse> result = messageService.getChatRoomMessages(CHAT_ROOM_ID, pageable);
+            Page<MessageResponse> result = messageService.findChatRoomMessages(CHAT_ROOM_ID, pageable);
 
             // Then
             assertThat(result).isNotNull();
@@ -196,19 +235,19 @@ class MessageServiceTest {
         }
 
         @Test
-        @DisplayName("givenChatRoomIdAndLimit_whenGetRecentChatRoomMessages_thenReturnMessageList")
-        void givenChatRoomIdAndLimit_whenGetRecentChatRoomMessages_thenReturnMessageList() {
+        @DisplayName("givenChatRoomIdAndLimit_whenFindRecentChatRoomMessages_thenReturnMessageList")
+        void givenChatRoomIdAndLimit_whenFindRecentChatRoomMessages_thenReturnMessageList() {
             // Given
             int limit = 10;
-            List<Message> messages = Arrays.asList(testMessage);
+            List<Message> messages = List.of(testMessage);
 
             doNothing().when(entityFinder).validateChatRoomExists(CHAT_ROOM_ID);
-            when(messageRepository.findTopByChatRoomIdOrderByTimestampDesc(CHAT_ROOM_ID, limit))
+            when(messageRepository.findTopByChatRoomIdWithSenderAndRoomOrderByTimestampDesc(CHAT_ROOM_ID, limit))
                     .thenReturn(messages);
             when(messageMapper.toResponse(testMessage)).thenReturn(messageResponse);
 
             // When
-            List<MessageResponse> result = messageService.getRecentChatRoomMessages(CHAT_ROOM_ID, limit);
+            List<MessageResponse> result = messageService.findRecentChatRoomMessages(CHAT_ROOM_ID, limit);
 
             // Then
             assertThat(result).isNotNull();
@@ -216,7 +255,7 @@ class MessageServiceTest {
             assertThat(result.get(0).getId()).isEqualTo(MESSAGE_ID);
 
             verify(entityFinder).validateChatRoomExists(CHAT_ROOM_ID);
-            verify(messageRepository).findTopByChatRoomIdOrderByTimestampDesc(CHAT_ROOM_ID, limit);
+            verify(messageRepository).findTopByChatRoomIdWithSenderAndRoomOrderByTimestampDesc(CHAT_ROOM_ID, limit);
         }
 
         @Test
@@ -245,12 +284,12 @@ class MessageServiceTest {
             List<Message> messages = Arrays.asList(testMessage);
             Page<Message> messagePage = new PageImpl<>(messages);
 
-            when(messageRepository.findBySenderIdOrderByTimestampDesc(USER_ID, pageable))
+            when(messageRepository.findBySenderIdWithSenderAndRoomOrderByTimestampDesc(USER_ID, pageable))
                     .thenReturn(messagePage);
             when(messageMapper.toResponse(testMessage)).thenReturn(messageResponse);
 
             // When
-            Page<MessageResponse> result = messageService.getMessagesBySender(USER_ID, pageable);
+            Page<MessageResponse> result = messageService.findMessagesBySender(USER_ID, pageable);
 
             // Then
             assertThat(result).isNotNull();
@@ -258,7 +297,7 @@ class MessageServiceTest {
             assertThat(result.getContent().getFirst().getId()).isEqualTo(MESSAGE_ID);
 
             verify(entityFinder).validateUserExists(USER_ID);
-            verify(messageRepository).findBySenderIdOrderByTimestampDesc(USER_ID, pageable);
+            verify(messageRepository).findBySenderIdWithSenderAndRoomOrderByTimestampDesc(USER_ID, pageable);
         }
 
         @Test
@@ -270,7 +309,7 @@ class MessageServiceTest {
                     .when(entityFinder).validateChatRoomExists(NONEXISTENT_ID);
 
             // When & Then
-            assertThatThrownBy(() -> messageService.getChatRoomMessages(NONEXISTENT_ID, pageable))
+            assertThatThrownBy(() -> messageService.findChatRoomMessages(NONEXISTENT_ID, pageable))
                     .isInstanceOf(ChatRoomException.class)
                     .hasMessage(ERROR_CHAT_ROOM_NOT_FOUND);
 
@@ -286,11 +325,11 @@ class MessageServiceTest {
                     .when(entityFinder).validateChatRoomExists(NONEXISTENT_ID);
 
             // When & Then
-            assertThatThrownBy(() -> messageService.getRecentChatRoomMessages(NONEXISTENT_ID, limit))
+            assertThatThrownBy(() -> messageService.findRecentChatRoomMessages(NONEXISTENT_ID, limit))
                     .isInstanceOf(ChatRoomException.class)
                     .hasMessage(ERROR_CHAT_ROOM_NOT_FOUND);
 
-            verify(messageRepository, never()).findTopByChatRoomIdOrderByTimestampDesc(anyLong(), anyInt());
+            verify(messageRepository, never()).findTopByChatRoomIdWithSenderAndRoomOrderByTimestampDesc(anyLong(), anyInt());
         }
     }
 
@@ -302,14 +341,8 @@ class MessageServiceTest {
         @DisplayName("givenMessageAndUser_whenUpdateMessageStatus_thenReturnUpdatedMessage")
         void givenMessageAndUser_whenUpdateMessageStatus_thenReturnUpdatedMessage() {
             // Given
-            Message updatedMessage = Message.builder()
-                    .id(MESSAGE_ID)
-                    .sender(testUser)
-                    .chatRoom(testChatRoom)
-                    .content(TEST_MESSAGE_CONTENT)
-                    .status(MessageStatus.READ) // 상태 변경됨
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            Message updatedMessage = createTestMessage(MESSAGE_ID, TEST_MESSAGE_CONTENT, testUser, testChatRoom);
+            setField(updatedMessage, "status", MessageStatus.READ); // 상태 변경됨
 
             when(entityFinder.findMessageById(MESSAGE_ID)).thenReturn(testMessage);
             when(entityFinder.findUserById(USER_ID)).thenReturn(testUser);
