@@ -13,9 +13,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MessageCreateRequest {
-    @NotNull(message = "발신자 ID는 필수입니다.")
-    private Long senderId;
-
     @NotNull(message = "채팅방 ID는 필수입니다.")
     private Long chatRoomId;
 

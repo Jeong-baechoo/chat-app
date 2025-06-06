@@ -17,7 +17,7 @@ public interface MessageService {
     /**
      * 메시지 전송
      */
-    MessageResponse sendMessage(MessageCreateRequest request);
+    MessageResponse sendMessage(MessageCreateRequest request, Long senderId);
 
     /**
      * 채팅방 메시지 조회 (페이징)
