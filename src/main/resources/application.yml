@@ -21,16 +21,6 @@ spring:
   profiles:
     active: dev
 
-  # RabbitMQ 설정
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
-    # 발행자 확인
-    publisher-returns: true
-    publisher-confirm-type: correlated
   web:
     cors:
         allowed-origins: http://localhost:3000
@@ -39,29 +29,62 @@ spring:
         allow-credentials: true
         max-age: 3600
 
+  # Kafka 설정 (Docker 실행 시에만 활성화)
+  kafka:
+    enabled: true  # false로 변경하면 Kafka 없이 실행
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: chat-app
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: com.example.chatapp.infrastructure.kafka.serialization.ChatEventDeserializer
+        spring.json.trusted.packages: "com.example.chatapp.infrastructure.message"
+        spring.json.type.mapping: "chatEvent:com.example.chatapp.infrastructure.message.ChatEvent"
+      enable-auto-commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.example.chatapp.infrastructure.kafka.serialization.ChatEventSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        batch.size: 16384
+        linger.ms: 10
+        buffer.memory: 33554432
+
 # 로깅 설정
-logging:
-  level:
-    org:
-      hibernate: INFO
-      hibernate.SQL: DEBUG
-      hibernate.orm.jdbc.bind: TRACE
-      hibernate.type: OFF
-      hibernate.engine.jdbc: OFF
-    com:
-      example:
-        chatapp:
-          repository: DEBUG
-    com.example.chatapp.infrastructure.filter: DEBUG
-    org.springframework.web.socket: DEBUG
-    org.springframework.messaging: DEBUG
-    com.example.chatapp: DEBUG
+#logging:
+#  level:
+#    org:
+#      hibernate: INFO
+#      hibernate.SQL: DEBUG
+#      hibernate.orm.jdbc.bind: TRACE
+#      hibernate.type: OFF
+#      hibernate.engine.jdbc: OFF
+#    com:
+#      example:
+#        chatapp:
+#          repository: DEBUG
+#    com.example.chatapp.infrastructure.filter: DEBUG
+#    org.springframework.web.socket: DEBUG
+#    org.springframework.messaging: DEBUG
+#    com.example.chatapp: DEBUG
+#    org.hibernate.SQL: DEBUG
 
 
 
 # 서버 포트 설정
 server:
   port: 8080
+  # Tomcat 최적화 (동시 연결 처리)
+  tomcat:
+    threads:
+      max: 200  # 최대 스레드 수 증가
+      min-spare: 20  # 최소 대기 스레드
+    max-connections: 8192  # 최대 연결 수
+    accept-count: 100  # 대기열 크기
 
 # 애플리케이션 커스텀 설정
 chat:
