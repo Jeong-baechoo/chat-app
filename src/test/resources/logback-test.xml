@@ -1,32 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <!-- 콘솔 출력 설정 -->
+    <!-- 테스트 환경용 콘솔 출력 설정 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- Hibernate SQL 로그 설정 -->
-    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-
-    <!-- 파라미터 바인딩 로그 비활성화 -->
-    <logger name="org.hibernate.orm.jdbc.bind" level="OFF" />
-
-    <!-- 다른 Hibernate 로거 명시적으로 비활성화 -->
-    <logger name="org.hibernate.type" level="OFF" />
-    <logger name="org.hibernate.engine.jdbc" level="OFF" />
-    <logger name="org.hibernate.type.descriptor.sql" level="OFF" />
-
-    <!-- 애플리케이션 로거 설정 -->
+    <!-- 애플리케이션 로거 (테스트 시 디버그 레벨) -->
     <logger name="com.example.chatapp" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
 
-    <!-- 기본 로거 설정 -->
-    <root level="INFO">
+    <!-- Spring Framework 로거 (테스트 시 최소화) -->
+    <logger name="org.springframework" level="WARN" />
+    <logger name="org.springframework.test" level="INFO" />
+    
+    <!-- Hibernate 로거 (테스트 시 최소화) -->
+    <logger name="org.hibernate" level="WARN" />
+    <logger name="org.hibernate.SQL" level="WARN" />
+    <logger name="org.hibernate.type" level="WARN" />
+    <logger name="org.hibernate.orm.jdbc.bind" level="WARN" />
+
+    <!-- p6spy 로거 (테스트 시 비활성화) -->
+    <logger name="p6spy" level="WARN" />
+
+    <!-- HikariCP 로거 (테스트 시 최소화) -->
+    <logger name="com.zaxxer.hikari" level="WARN" />
+
+    <!-- 테스트 기본 로거 설정 -->
+    <root level="WARN">
         <appender-ref ref="CONSOLE" />
     </root>
 </configuration>

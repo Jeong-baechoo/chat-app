@@ -1,22 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!-- 콘솔 출력 설정 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <logger name="com.example.chatapp" level="DEBUG" />
-    <logger name="org.springframework" level="INFO" />
-    <logger name="org.hibernate" level="INFO" />
-    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+    <!-- 파일 출력 설정 (운영 환경용) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/application.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 애플리케이션 로거 -->
+    <logger name="com.example.chatapp" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger name="org.hibernate.type.descriptor.sql" level="TRACE" additivity="false">
-        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
     </logger>
 
+    <!-- Spring Framework 로거 -->
+    <logger name="org.springframework" level="INFO" />
+    
+    <!-- Hibernate 로거 -->
+    <logger name="org.hibernate" level="WARN" />
+    <logger name="org.hibernate.SQL" level="INFO" />
+    <logger name="org.hibernate.type.descriptor.sql" level="WARN" />
+
+    <!-- p6spy 로거 (SQL 로깅) -->
+    <logger name="p6spy" level="INFO" />
+
+    <!-- 기본 로거 설정 -->
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
     </root>
 </configuration>
