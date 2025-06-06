@@ -37,7 +37,7 @@ public class ChatEventPublisherService {
             // 1. Kafka 이벤트 발행
             ChatEvent roomCreatedEvent = ChatEvent.roomCreatedEvent(
                 chatRoom.getId(),
-                chatRoom.getName(),
+                    String.valueOf(chatRoom.getName()),
                 creator.getId(),
                 creator.getUsername()
             );

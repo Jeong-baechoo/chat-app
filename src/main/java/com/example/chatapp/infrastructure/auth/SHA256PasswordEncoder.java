@@ -1,5 +1,6 @@
 package com.example.chatapp.infrastructure.auth;
 
+import com.example.chatapp.infrastructure.auth.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
