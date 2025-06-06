@@ -44,12 +44,12 @@ public class MessageServiceImpl implements MessageService {
      * 메시지 생성 요청을 검증하고, 새 메시지를 저장한 후 이벤트를 발행합니다.
      *
      * @param request 메시지 생성 요청 DTO
-     * @return 메시지 응답 DTO
+     * @param senderId 발신자 ID
      * @throws MessageException 메시지 요청이 유효하지 않은 경우
      */
     @Override
     @Transactional
-    public MessageResponse sendMessage(MessageCreateRequest request, Long senderId) {
+    public void sendMessage(MessageCreateRequest request, Long senderId) {
         // 메시지 요청 검증
         validator.validateMessageRequest(request);
 
@@ -67,8 +67,6 @@ public class MessageServiceImpl implements MessageService {
 
         log.debug("메시지 저장 완료: id={}, senderId={}, chatRoomId={}",
                 savedMessage.getId(), sender.getId(), chatRoom.getId());
-
-        return messageMapper.toResponse(savedMessage);
     }
 
     /**
@@ -188,7 +186,7 @@ public class MessageServiceImpl implements MessageService {
      * 사용자가 채팅방의 참여자인지 확인하고 참여자 정보 반환
      * 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
      */
-    private ChatRoomParticipant validateAndGetParticipant(Long userId, Long chatRoomId) {
+private ChatRoomParticipant validateAndGetParticipant(Long userId, Long chatRoomId) {
         return chatRoomParticipantRepository
                 .findByUserIdAndChatRoomIdWithUserAndChatRoom(userId, chatRoomId)
                 .orElseThrow(() -> new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다"));

@@ -1,7 +1,8 @@
 package com.example.chatapp.controller;
 
 import com.example.chatapp.dto.request.MessageCreateRequest;
-import com.example.chatapp.dto.response.MessageResponse;
+import com.example.chatapp.dto.request.RoomEnterRequest;
+import com.example.chatapp.dto.request.RoomLeaveRequest;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
@@ -19,7 +20,9 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -43,18 +46,18 @@ public class WebSocketController {
                 senderId, request.getChatRoomId());
 
         // 메시지 저장 (Kafka 이벤트는 MessageService에서 자동 발행)
-        MessageResponse messageDTO = messageService.sendMessage(request, senderId);
+        messageService.sendMessage(request, senderId);
 
-        log.debug("메시지 전송 요청 처리 완료: id={}", messageDTO.getId());
+        log.debug("메시지 전송 요청 처리 완료");
     }
 
     /**
      * 채팅방 입장
      */
     @MessageMapping("/room.enter")
-    public void enterRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor){
-        Long userId = extractLongValue(payload, "userId");
-        Long roomId = extractLongValue(payload, "roomId");
+    public void enterRoom(@Payload @Valid RoomEnterRequest request, SimpMessageHeaderAccessor headerAccessor){
+        Long userId = request.getUserId();
+        Long roomId = request.getRoomId();
 
         // 사용자 정보 조회
         UserResponse user = userService.findUserById(userId);
@@ -73,9 +76,9 @@ public class WebSocketController {
      * 채팅방 퇴장
      */
     @MessageMapping("/room.leave")
-    public void leaveRoom(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) {
-        Long userId = extractLongValue(payload, "userId");
-        Long roomId = extractLongValue(payload, "roomId");
+    public void leaveRoom(@Payload @Valid RoomLeaveRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        Long userId = request.getUserId();
+        Long roomId = request.getRoomId();
 
         // 사용자 정보 조회
         UserResponse user = userService.findUserById(userId);
@@ -152,16 +155,6 @@ public class WebSocketController {
         return "SERVER_ERROR";
     }
 
-    /**
-     * Map에서 Long 값 추출
-     */
-    private Long extractLongValue(Map<String, Object> payload, String key) {
-        Object value = payload.get(key);
-        if (value == null) {
-            throw new IllegalArgumentException(key + " 값이 필요합니다.");
-        }
-        return Long.valueOf(value.toString());
-    }
 
     /**
      * 세션에서 사용자 ID 가져오기

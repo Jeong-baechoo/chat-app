@@ -159,30 +159,23 @@ class MessageServiceTest {
     class SendMessageTests {
 
         @Test
-        @DisplayName("givenValidRequest_whenSendMessage_thenReturnMessageResponse")
-        void givenValidRequest_whenSendMessage_thenReturnMessageResponse() {
+        @DisplayName("givenValidRequest_whenSendMessage_thenMessageSaved")
+        void givenValidRequest_whenSendMessage_thenMessageSaved() {
             // Given
             when(chatRoomParticipantRepository.findByUserIdAndChatRoomIdWithUserAndChatRoom(USER_ID, CHAT_ROOM_ID))
                     .thenReturn(Optional.of(testParticipant));
             when(messageDomainService.createMessage(TEST_MESSAGE_CONTENT, testUser, testChatRoom)).thenReturn(testMessage);
             when(messageRepository.save(testMessage)).thenReturn(testMessage);
-            when(messageMapper.toResponse(testMessage)).thenReturn(messageResponse);
 
             // When
-            MessageResponse result = messageService.sendMessage(validMessageRequest, USER_ID);
+            messageService.sendMessage(validMessageRequest, USER_ID);
 
-            // Then
-            assertThat(result).isNotNull();
-            assertThat(result.getId()).isEqualTo(MESSAGE_ID);
-            assertThat(result.getContent()).isEqualTo(TEST_MESSAGE_CONTENT);
-
-            // 핵심 관심사 검증
+            // Then - void 메서드이므로 리턴값 검증 대신 동작 검증
             verify(validator).validateMessageRequest(validMessageRequest);
             verify(chatRoomParticipantRepository).findByUserIdAndChatRoomIdWithUserAndChatRoom(USER_ID, CHAT_ROOM_ID);
             verify(messageDomainService).createMessage(TEST_MESSAGE_CONTENT, testUser, testChatRoom);
             verify(messageRepository).save(testMessage);
             verify(eventPublisher).publishMessageEvent(testMessage, testUser);
-            verify(messageMapper).toResponse(testMessage);
         }
 
         @Test
