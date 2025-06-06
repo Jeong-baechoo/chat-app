@@ -2,8 +2,8 @@ package com.example.chatapp.service;
 
 import com.example.chatapp.domain.LoginSession;
 import com.example.chatapp.domain.User;
-import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.infrastructure.auth.PasswordEncoder;
+import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.infrastructure.session.SessionStore;
 import com.example.chatapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -55,10 +55,8 @@ public class AuthService {
             throw new IllegalArgumentException("이미 사용 중인 사용자명입니다");
         }
 
-        User user = User.builder()
-                .username(username)
-                .password(passwordEncoder.encode(password))
-                .build();
+        String encodedPassword = passwordEncoder.encode(password);
+        User user = User.create(username, encodedPassword);
 
         return createAuthResponse(userRepository.save(user));
     }

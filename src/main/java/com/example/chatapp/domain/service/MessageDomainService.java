@@ -102,7 +102,7 @@ public class MessageDomainService {
      * @return 업데이트된 메시지
      */
     public Message updateMessageStatus(Message message, MessageStatus status) {
-        message.setStatus(status);
+        message.updateStatus(status);
         return message;
     }
 }

@@ -1,6 +1,7 @@
 package com.example.chatapp.service.impl;
 
 import com.example.chatapp.domain.*;
+import com.example.chatapp.domain.service.ChatRoomDomainService;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
@@ -33,6 +34,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomMapper chatRoomMapper;
     private final ChatEventPublisherService eventPublisher;
     private final EntityFinderService entityFinderService;
+    private final ChatRoomDomainService chatRoomDomainService;
 
     @Override
     @Transactional
@@ -40,12 +42,14 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         // 먼저 사용자 존재 여부 확인
         User creator = findUserById(request.getCreatorId());
 
-        // 채팅방 생성
-        ChatRoom chatRoom = chatRoomMapper.toEntity(request);
+        // 도메인 서비스를 통한 채팅방 생성
+        ChatRoom chatRoom = chatRoomDomainService.createChatRoom(
+                request.getName(), 
+                request.getType(), 
+                creator
+        );
+        
         ChatRoom savedChatRoom = chatRoomRepository.save(chatRoom);
-
-        // 참여자 추가 - 생성자는 ADMIN 권한으로 추가
-        addParticipantToChatRoomInternal(savedChatRoom, creator, ParticipantRole.ADMIN);
 
         // 이벤트 발행 로직을 별도 서비스로 위임
         eventPublisher.publishRoomCreatedEvent(savedChatRoom, creator);
@@ -88,9 +92,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         // 이미 참여한 사용자인지 확인
         if (!participantRepo.existsByUserIdAndChatRoomId(userId, chatRoomId)) {
-            // 참여자 추가 - 일반 사용자는 MEMBER 권한으로 추가
-            addParticipantToChatRoomInternal(chatRoom, user, ParticipantRole.MEMBER);
-
+            // 도메인 서비스를 통한 자유 참여
+            chatRoomDomainService.joinChatRoom(chatRoom, user);
+            
             // 이벤트 발행 로직을 별도 서비스로 위임
             eventPublisher.publishUserJoinEvent(chatRoomId, user);
         }
@@ -112,17 +116,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     // 내부 헬퍼 메소드
 
-    private void addParticipantToChatRoomInternal(ChatRoom chatRoom, User user, ParticipantRole role) {
-        ChatRoomParticipant participant = ChatRoomParticipant.builder()
-                .user(user)
-                .chatRoom(chatRoom)
-                .role(role)
-                .notificationEnabled(true)
-                .joinedAt(LocalDateTime.now())
-                .build();
-
-        participantRepo.save(participant);
-    }
 
     private ChatRoom findChatRoomByIdOrThrow(Long chatRoomId) {
         return chatRoomRepository.findById(chatRoomId)
