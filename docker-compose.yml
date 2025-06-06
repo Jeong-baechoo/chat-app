@@ -57,18 +57,94 @@ services:
     container_name: mysql
     restart: always
     environment:
-      MYSQL_DATABASE: chatapp_test
-      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: chatapp
+      MYSQL_USER: chatapp
+      MYSQL_PASSWORD: chatapp123
+      MYSQL_ROOT_PASSWORD: root123
       MYSQL_CHARACTER_SET_SERVER: utf8mb4
       MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     ports:
       - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis (세션 저장용 - 선택사항)
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+
+  # Chat Application
+  chat-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat-app
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring Profile
+      SPRING_PROFILES_ACTIVE: prod
+      
+      # Database Configuration
+      DB_USERNAME: chatapp
+      DB_PASSWORD: chatapp123
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chatapp?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+      
+      # Kafka Configuration
+      KAFKA_SERVERS: kafka:29092
+      
+      # Redis Configuration (선택사항)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # CORS Configuration
+      FRONTEND_URL: http://localhost:3000
+      
+      # JVM 설정
+      JAVA_OPTS: >
+        -server
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=75.0
+        -XX:+UseG1GC
+        -XX:+HeapDumpOnOutOfMemoryError
+        -XX:HeapDumpPath=/app/logs/
+    volumes:
+      - app-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   kafka-data:
   zookeeper-data:
   zookeeper-logs:
   mysql-data:
+  redis-data:
+  app-logs:
