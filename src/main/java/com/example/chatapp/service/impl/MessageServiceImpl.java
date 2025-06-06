@@ -49,12 +49,12 @@ public class MessageServiceImpl implements MessageService {
      */
     @Override
     @Transactional
-    public MessageResponse sendMessage(MessageCreateRequest request) {
+    public MessageResponse sendMessage(MessageCreateRequest request, Long senderId) {
         // 메시지 요청 검증
         validator.validateMessageRequest(request);
 
         // 메시지 전송 권한 확인 (채팅방 참여자인지)
-        ChatRoomParticipant participant = validateAndGetParticipant(request.getSenderId(), request.getChatRoomId());
+        ChatRoomParticipant participant = validateAndGetParticipant(senderId, request.getChatRoomId());
         User sender = participant.getUser();
         ChatRoom chatRoom = participant.getChatRoom();
 

@@ -20,9 +20,6 @@ public class MessageValidator {
      * @throws MessageException 요청이 유효하지 않은 경우
      */
     public void validateMessageRequest(MessageCreateRequest request) {
-        if (request.getSenderId() == null) {
-            throw new MessageException("발신자 ID는 필수입니다");
-        }
         if (request.getChatRoomId() == null) {
             throw new MessageException("채팅방 ID는 필수입니다");
         }

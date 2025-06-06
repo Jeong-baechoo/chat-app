@@ -36,12 +36,15 @@ public class WebSocketController {
      * 메시지 전송
      */
     @MessageMapping("/message.send")
-    public void sendMessage(@Payload MessageCreateRequest request) {
+    public void sendMessage(@Payload MessageCreateRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        // 세션에서 사용자 ID 가져오기
+        Long senderId = getUserIdFromSession(headerAccessor);
+        
         log.debug("WebSocket 메시지 전송 요청: senderId={}, roomId={}",
-                request.getSenderId(), request.getChatRoomId());
+                senderId, request.getChatRoomId());
 
         // 메시지 저장 (Kafka 이벤트는 MessageService에서 자동 발행)
-        MessageResponse messageDTO = messageService.sendMessage(request);
+        MessageResponse messageDTO = messageService.sendMessage(request, senderId);
 
         log.debug("메시지 전송 요청 처리 완료: id={}", messageDTO.getId());
     }
@@ -154,6 +157,23 @@ public class WebSocketController {
             throw new IllegalArgumentException(key + " 값이 필요합니다.");
         }
         return Long.valueOf(value.toString());
+    }
+
+    /**
+     * 세션에서 사용자 ID 가져오기
+     */
+    private Long getUserIdFromSession(SimpMessageHeaderAccessor headerAccessor) {
+        Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
+        if (sessionAttributes == null) {
+            throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
+        }
+        
+        Object userId = sessionAttributes.get("userId");
+        if (userId == null) {
+            throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
+        }
+        
+        return Long.valueOf(userId.toString());
     }
 
 }

@@ -1,0 +1,78 @@
+# 개발 환경 설정
+spring:
+  datasource:
+    url: jdbc:h2:mem:chatapp-dev
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  web:
+    cors:
+      allowed-origins: 
+        - http://localhost:3000
+        - http://localhost:8080
+      allowed-methods: GET, POST, PUT, DELETE, OPTIONS
+      allowed-headers: Content-Type, Authorization
+      allow-credentials: true
+      max-age: 3600
+
+  # Kafka 설정 (개발용 - 로컬)
+  kafka:
+    enabled: true
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: chat-app-dev
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: com.example.chatapp.infrastructure.kafka.serialization.ChatEventDeserializer
+        spring.json.trusted.packages: "com.example.chatapp.infrastructure.message"
+        spring.json.type.mapping: "chatEvent:com.example.chatapp.infrastructure.message.ChatEvent"
+      enable-auto-commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.example.chatapp.infrastructure.kafka.serialization.ChatEventSerializer
+      acks: all
+      retries: 3
+
+# 개발용 로깅 설정
+logging:
+  level:
+    org:
+      hibernate: DEBUG
+      hibernate.SQL: DEBUG
+      hibernate.orm.jdbc.bind: TRACE
+    com:
+      example:
+        chatapp: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
+
+# 개발용 서버 설정
+server:
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 5
+    max-connections: 200
+
+# 개발용 WebSocket 설정
+chat:
+  websocket:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080

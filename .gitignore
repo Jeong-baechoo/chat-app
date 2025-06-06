@@ -35,3 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Portfolio Documentation ###
+portfolio-docs/
+
+### Logs ###
+logs/
+*.log
