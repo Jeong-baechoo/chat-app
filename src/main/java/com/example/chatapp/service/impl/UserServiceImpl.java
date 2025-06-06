@@ -1,5 +1,6 @@
 package com.example.chatapp.service.impl;
 
+import com.example.chatapp.domain.LoginSession;
 import com.example.chatapp.domain.User;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UserException;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,14 +65,18 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> findLoggedInUsers() {
-        List<UserResponse> list = sessionStore.getAllSessions().stream()
-                .map(session -> userRepository.findById(session.getUserId()))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+        // 세션에서 사용자 ID 목록 추출
+        Set<Long> userIds = sessionStore.getAllSessions().stream()
+                .map(LoginSession::getUserId)
+                .collect(Collectors.toSet());
+        
+        // 한 번에 모든 사용자 조회 (IN 쿼리 사용)
+        List<User> users = userRepository.findAllById(List.copyOf(userIds));
+        List<UserResponse> result = users.stream()
                 .map(userMapper::toResponse)
                 .toList();
-        log.debug("전체 사용자 조회: {}명 조회됨", list.size());
-
-        return list;
+        
+        log.debug("로그인된 사용자 조회: {}명 조회됨", result.size());
+        return result;
     }
 }

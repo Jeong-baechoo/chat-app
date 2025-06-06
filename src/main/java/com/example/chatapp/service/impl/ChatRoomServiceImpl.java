@@ -10,8 +10,8 @@ import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.ChatRoomMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
-import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.ChatRoomService;
+import com.example.chatapp.service.EntityFinderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +29,10 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
-    private final UserRepository userRepository;
     private final ChatRoomParticipantRepository participantRepo;
     private final ChatRoomMapper chatRoomMapper;
     private final ChatEventPublisherService eventPublisher;
+    private final EntityFinderService entityFinderService;
 
     @Override
     @Transactional
@@ -130,14 +130,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     private User findUserById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new UserException("사용자를 찾을 수 없습니다"));
+        return entityFinderService.findUserById(userId);
     }
 
     private void validateUserExists(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            throw new UserException("사용자를 찾을 수 없습니다");
-        }
+        entityFinderService.validateUserExists(userId);
     }
 
     private void validateUserIsRoomAdmin(Long userId, Long chatRoomId) {

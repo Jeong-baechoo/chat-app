@@ -21,7 +21,6 @@ import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 
 @Controller
@@ -130,22 +129,27 @@ public class WebSocketController {
      * 오류 메시지 생성
      */
     private Map<String, Object> createErrorMessage(Exception e) {
-        Map<String, Object> errorMessage = new HashMap<>();
-        errorMessage.put("timestamp", LocalDateTime.now().toString());
-
-        String status = "SERVER_ERROR";
+        String status = determineErrorStatus(e);
+        
+        return Map.of(
+            "timestamp", LocalDateTime.now().toString(),
+            "status", status,
+            "message", e.getMessage()
+        );
+    }
+    
+    /**
+     * 예외 타입에 따른 상태 코드 결정
+     */
+    private String determineErrorStatus(Exception e) {
         if (e instanceof UserException) {
-            status = "USER_ERROR";
+            return "USER_ERROR";
         } else if (e instanceof ChatRoomException) {
-            status = "CHATROOM_ERROR";
+            return "CHATROOM_ERROR";
         } else if (e instanceof MessageException) {
-            status = "MESSAGE_ERROR";
+            return "MESSAGE_ERROR";
         }
-
-        errorMessage.put("status", status);
-        errorMessage.put("message", e.getMessage());
-
-        return errorMessage;
+        return "SERVER_ERROR";
     }
 
     /**

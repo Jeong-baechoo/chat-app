@@ -1,5 +1,6 @@
 package com.example.chatapp.service;
 
+import com.example.chatapp.constants.ErrorMessages;
 import com.example.chatapp.domain.ChatRoom;
 import com.example.chatapp.domain.Message;
 import com.example.chatapp.domain.User;
@@ -32,7 +33,7 @@ public class EntityFinderService {
      */
     public User findUserById(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new UserException("사용자를 찾을 수 없습니다: " + userId));
+                .orElseThrow(() -> new UserException(ErrorMessages.USER_NOT_FOUND + ": " + userId));
     }
 
     /**
@@ -44,7 +45,7 @@ public class EntityFinderService {
      */
     public ChatRoom findChatRoomById(Long chatRoomId) {
         return chatRoomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new ChatRoomException("채팅방을 찾을 수 없습니다: " + chatRoomId));
+                .orElseThrow(() -> new ChatRoomException(ErrorMessages.CHATROOM_NOT_FOUND + ": " + chatRoomId));
     }
 
     /**
@@ -56,7 +57,7 @@ public class EntityFinderService {
      */
     public Message findMessageById(Long messageId) {
         return messageRepository.findById(messageId)
-                .orElseThrow(() -> new MessageException("메시지를 찾을 수 없습니다: " + messageId));
+                .orElseThrow(() -> new MessageException(ErrorMessages.MESSAGE_NOT_FOUND + ": " + messageId));
     }
 
     /**
@@ -67,7 +68,7 @@ public class EntityFinderService {
      */
     public void validateChatRoomExists(Long chatRoomId) {
          if (!chatRoomRepository.existsById(chatRoomId)) {
-            throw new ChatRoomException("채팅방을 찾을 수 없습니다: " + chatRoomId);
+            throw new ChatRoomException(ErrorMessages.CHATROOM_NOT_FOUND + ": " + chatRoomId);
         }
     }
 
@@ -79,7 +80,7 @@ public class EntityFinderService {
      */
     public void validateUserExists(Long userId) {
         if (!userRepository.existsById(userId)) {
-            throw new UserException("사용자를 찾을 수 없습니다: " + userId);
+            throw new UserException(ErrorMessages.USER_NOT_FOUND + ": " + userId);
         }
     }
 }
