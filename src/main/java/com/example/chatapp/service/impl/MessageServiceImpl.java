@@ -95,7 +95,8 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public List<MessageResponse> findRecentChatRoomMessages(Long chatRoomId, int limit) {
         entityFinder.validateChatRoomExists(chatRoomId);
-        List<Message> messages = messageRepository.findTopByChatRoomIdOrderByTimestampDesc(chatRoomId, limit);
+        // 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
+        List<Message> messages = messageRepository.findTopByChatRoomIdWithSenderAndRoomOrderByTimestampDesc(chatRoomId, limit);
 
         // 적은 양의 데이터를 처리할 때는 스트림 대신 반복문 사용
         List<MessageResponse> responses = new ArrayList<>(messages.size());
@@ -157,7 +158,8 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public Page<MessageResponse> findMessagesBySender(Long senderId, Pageable pageable) {
         entityFinder.validateUserExists(senderId);
-        return messageRepository.findBySenderIdOrderByTimestampDesc(senderId, pageable)
+        // 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
+        return messageRepository.findBySenderIdWithSenderAndRoomOrderByTimestampDesc(senderId, pageable)
                 .map(messageMapper::toResponse);
     }
 
@@ -184,10 +186,11 @@ public class MessageServiceImpl implements MessageService {
 
     /**
      * 사용자가 채팅방의 참여자인지 확인하고 참여자 정보 반환
+     * 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
      */
     private ChatRoomParticipant validateAndGetParticipant(Long userId, Long chatRoomId) {
         return chatRoomParticipantRepository
-                .findByUserIdAndChatRoomId(userId, chatRoomId)
+                .findByUserIdAndChatRoomIdWithUserAndChatRoom(userId, chatRoomId)
                 .orElseThrow(() -> new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다"));
     }
 }
