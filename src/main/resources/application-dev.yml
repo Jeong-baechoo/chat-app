@@ -1,0 +1,96 @@
+# 개발 환경 설정
+spring:
+  datasource:
+    url: jdbc:p6spy:mysql://127.0.0.1:3306/chatapp?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&useServerPrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048
+    username: chatapp
+    password: chatapp123
+    driver-class-name: com.p6spy.engine.spy.P6SpyDriver
+    # HikariCP 연결 풀 최적화 설정
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 20000
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        # 성능 최적화 설정
+        jdbc:
+          batch_size: 20
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        # 캐시 설정 (개발 환경에서는 비활성화)
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        # 통계 및 모니터링
+        generate_statistics: true
+
+  web:
+    cors:
+      allowed-origins: 
+        - http://localhost:3000
+        - http://localhost:8080
+      allowed-methods: GET, POST, PUT, DELETE, OPTIONS
+      allowed-headers: Content-Type, Authorization
+      allow-credentials: true
+      max-age: 3600
+
+  # Kafka 설정 (개발용 - 로컬)
+  kafka:
+    enabled: true
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: chat-app-dev
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: com.example.chatapp.infrastructure.kafka.serialization.ChatEventDeserializer
+        spring.json.trusted.packages: "com.example.chatapp.infrastructure.message"
+        spring.json.type.mapping: "chatEvent:com.example.chatapp.infrastructure.message.ChatEvent"
+      enable-auto-commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: com.example.chatapp.infrastructure.kafka.serialization.ChatEventSerializer
+      acks: all
+      retries: 3
+
+# 개발용 로깅 설정
+logging:
+  level:
+    org:
+      hibernate: DEBUG
+      hibernate.SQL: DEBUG
+      hibernate.orm.jdbc.bind: TRACE
+    com:
+      example:
+        chatapp: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
+
+# 개발용 서버 설정
+server:
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 5
+    max-connections: 200
+
+# 개발용 WebSocket 설정
+chat:
+  websocket:
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080

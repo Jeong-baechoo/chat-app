@@ -1,0 +1,44 @@
+# 테스트 환경 설정
+spring:
+  datasource:
+    url: jdbc:h2:mem:chatapp-test
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        
+  # Kafka 비활성화 (테스트에서는 불필요)
+  kafka:
+    enabled: false
+
+# 테스트용 로깅 설정 (최소화)
+logging:
+  level:
+    org:
+      hibernate: WARN
+      springframework: WARN
+    com:
+      example:
+        chatapp: INFO
+    org.springframework.web.socket: WARN
+
+# 테스트용 서버 설정 (가벼운 설정)
+server:
+  tomcat:
+    threads:
+      max: 10
+      min-spare: 2
+    max-connections: 50
+
+# 테스트용 WebSocket 설정
+chat:
+  websocket:
+    allowed-origins:
+      - "*"

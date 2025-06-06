@@ -130,7 +130,7 @@ class MessageServiceTest {
             when(messageMapper.toResponse(testMessage)).thenReturn(messageResponse);
 
             // When
-            MessageResponse result = messageService.sendMessage(validMessageRequest);
+            MessageResponse result = messageService.sendMessage(validMessageRequest, USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -155,7 +155,7 @@ class MessageServiceTest {
             when(messageDomainService.canUserSendMessage(testUser, testChatRoom)).thenReturn(false);
 
             // When & Then
-            assertThatThrownBy(() -> messageService.sendMessage(validMessageRequest))
+            assertThatThrownBy(() -> messageService.sendMessage(validMessageRequest, USER_ID))
                     .isInstanceOf(MessageException.class)
                     .hasMessage(ERROR_NOT_PARTICIPANT);
 

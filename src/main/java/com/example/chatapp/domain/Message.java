@@ -11,7 +11,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "messages")
+@Table(name = "messages",
+        indexes = {
+                @Index(name = "idx_chatroom_timestamp", columnList = "chat_room_id,timestamp"),
+                @Index(name = "idx_sender_timestamp", columnList = "sender_id,timestamp"),
+                @Index(name = "idx_timestamp", columnList = "timestamp"),
+                @Index(name = "idx_status", columnList = "status")
+        }
+)
 public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
