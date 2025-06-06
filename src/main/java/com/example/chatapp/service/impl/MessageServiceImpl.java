@@ -5,11 +5,11 @@ import com.example.chatapp.domain.service.MessageDomainService;
 import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.MessageException;
+import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.MessageMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.service.EntityFinderService;
-import com.example.chatapp.service.MessageEventPublisher;
 import com.example.chatapp.service.MessageService;
 import com.example.chatapp.service.MessageValidator;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * 메시지 서비스 구현 클래스
@@ -31,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true) // 기본적으로 모든 메소드는 읽기 전용 트랜잭션 사용
 public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final MessageDomainService messageDomainService;
@@ -38,14 +37,14 @@ public class MessageServiceImpl implements MessageService {
     private final MessageMapper messageMapper;
     private final EntityFinderService entityFinder;
     private final MessageValidator validator;
-    private final MessageEventPublisher eventPublisher;
+    private final ChatEventPublisherService eventPublisher;
 
     /**
      * 메시지 전송
      * 메시지 생성 요청을 검증하고, 새 메시지를 저장한 후 이벤트를 발행합니다.
      *
-     * @param request 메시지 생성 요청 객체
-     * @return 저장된 메시지의 응답 DTO
+     * @param request 메시지 생성 요청 DTO
+     * @return 메시지 응답 DTO
      * @throws MessageException 메시지 요청이 유효하지 않은 경우
      */
     @Override
@@ -54,30 +53,17 @@ public class MessageServiceImpl implements MessageService {
         // 메시지 요청 검증
         validator.validateMessageRequest(request);
 
-        Optional<ChatRoomParticipant> participantOpt = chatRoomParticipantRepository
-                .findByUserIdAndChatRoomId(request.getSenderId(), request.getChatRoomId());
-
-        if (participantOpt.isEmpty()) {
-            throw new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다");
-        }
-
-        ChatRoomParticipant participant = participantOpt.get();
+        // 메시지 전송 권한 확인 (채팅방 참여자인지)
+        ChatRoomParticipant participant = validateAndGetParticipant(request.getSenderId(), request.getChatRoomId());
         User sender = participant.getUser();
         ChatRoom chatRoom = participant.getChatRoom();
 
-        // 메시지 생성 및 저장
-        Message message = Message.builder()
-                .content(request.getContent())
-                .sender(sender)
-                .chatRoom(chatRoom)
-                .status(MessageStatus.SENT)
-                .timestamp(LocalDateTime.now())
-                .build();
-
+        // 도메인 서비스를 통해 메시지 생성
+        Message message = messageDomainService.createMessage(request.getContent(), sender, chatRoom);
         Message savedMessage = messageRepository.save(message);
 
-        // 이벤트 발행 (필요시 주석 해제)
-        // eventPublisher.publishMessageCreatedEvent(savedMessage);
+        // 이벤트 발행 로직을 별도 서비스로 위임
+        eventPublisher.publishMessageEvent(savedMessage, sender);
 
         log.debug("메시지 저장 완료: id={}, senderId={}, chatRoomId={}",
                 savedMessage.getId(), sender.getId(), chatRoom.getId());
@@ -93,8 +79,7 @@ public class MessageServiceImpl implements MessageService {
      * @return 페이징된 메시지 응답 목록
      */
     @Override
-    @Transactional(readOnly = true)
-    public Page<MessageResponse> getChatRoomMessages(Long chatRoomId, Pageable pageable) {
+    public Page<MessageResponse> findChatRoomMessages(Long chatRoomId, Pageable pageable) {
         entityFinder.validateChatRoomExists(chatRoomId);
         return messageRepository.findByChatRoomIdOrderByTimestampDesc(chatRoomId, pageable)
                 .map(messageMapper::toResponse);
@@ -108,13 +93,16 @@ public class MessageServiceImpl implements MessageService {
      * @return 최근 메시지 응답 목록
      */
     @Override
-    @Transactional(readOnly = true)
-    public List<MessageResponse> getRecentChatRoomMessages(Long chatRoomId, int limit) {
+    public List<MessageResponse> findRecentChatRoomMessages(Long chatRoomId, int limit) {
         entityFinder.validateChatRoomExists(chatRoomId);
-        return messageRepository.findTopByChatRoomIdOrderByTimestampDesc(chatRoomId, limit)
-                .stream()
-                .map(messageMapper::toResponse)
-                .collect(Collectors.toList());
+        List<Message> messages = messageRepository.findTopByChatRoomIdOrderByTimestampDesc(chatRoomId, limit);
+
+        // 적은 양의 데이터를 처리할 때는 스트림 대신 반복문 사용
+        List<MessageResponse> responses = new ArrayList<>(messages.size());
+        for (Message message : messages) {
+            responses.add(messageMapper.toResponse(message));
+        }
+        return responses;
     }
 
     /**
@@ -125,7 +113,6 @@ public class MessageServiceImpl implements MessageService {
      * @throws MessageException 메시지가 존재하지 않는 경우
      */
     @Override
-    @Transactional(readOnly = true)
     public MessageResponse findMessageById(Long id) {
         Message message = entityFinder.findMessageById(id);
         return messageMapper.toResponse(message);
@@ -146,10 +133,12 @@ public class MessageServiceImpl implements MessageService {
         Message message = entityFinder.findMessageById(messageId);
         User user = entityFinder.findUserById(userId);
 
+        // 권한 확인
         if (!messageDomainService.canUserUpdateMessage(user, message)) {
             throw new MessageException("메시지 상태를 변경할 권한이 없습니다");
         }
 
+        // 도메인 서비스를 통한 상태 업데이트
         Message updatedMessage = messageDomainService.updateMessageStatus(message, status);
         Message savedMessage = messageRepository.save(updatedMessage);
 
@@ -166,8 +155,7 @@ public class MessageServiceImpl implements MessageService {
      * @return 페이징된 메시지 응답 목록
      */
     @Override
-    @Transactional(readOnly = true)
-    public Page<MessageResponse> getMessagesBySender(Long senderId, Pageable pageable) {
+    public Page<MessageResponse> findMessagesBySender(Long senderId, Pageable pageable) {
         entityFinder.validateUserExists(senderId);
         return messageRepository.findBySenderIdOrderByTimestampDesc(senderId, pageable)
                 .map(messageMapper::toResponse);
@@ -190,5 +178,16 @@ public class MessageServiceImpl implements MessageService {
 
         messageRepository.delete(message);
         log.debug("메시지 삭제 완료: id={}", id);
+    }
+
+    // 내부 헬퍼 메소드
+
+    /**
+     * 사용자가 채팅방의 참여자인지 확인하고 참여자 정보 반환
+     */
+    private ChatRoomParticipant validateAndGetParticipant(Long userId, Long chatRoomId) {
+        return chatRoomParticipantRepository
+                .findByUserIdAndChatRoomId(userId, chatRoomId)
+                .orElseThrow(() -> new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다"));
     }
 }

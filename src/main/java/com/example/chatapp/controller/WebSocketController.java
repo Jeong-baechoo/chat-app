@@ -6,6 +6,8 @@ import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
+import com.example.chatapp.infrastructure.kafka.ChatEventProducer;
+import com.example.chatapp.infrastructure.message.ChatEvent;
 import com.example.chatapp.service.MessageService;
 import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -28,24 +30,20 @@ import java.util.Map;
 public class WebSocketController {
     private final UserService userService;
     private final MessageService messageService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ChatEventProducer chatEventProducer;
 
     /**
      * 메시지 전송
      */
     @MessageMapping("/message.send")
     public void sendMessage(@Payload MessageCreateRequest request) {
-        log.debug("WebSocket 메시지 전송: senderId={}, roomId={}",
+        log.debug("WebSocket 메시지 전송 요청: senderId={}, roomId={}",
                 request.getSenderId(), request.getChatRoomId());
 
-        // 메시지 저장 및 DTO로 변환
+        // 메시지 저장 (Kafka 이벤트는 MessageService에서 자동 발행)
         MessageResponse messageDTO = messageService.sendMessage(request);
 
-        // 메시지 이벤트 전송
-        broadcastMessage("MESSAGE", messageDTO.getSender(), request.getChatRoomId(),
-                messageDTO.getContent(), messageDTO, null);
-
-        log.debug("메시지 전송 성공: id={}", messageDTO.getId());
+        log.debug("메시지 전송 요청 처리 완료: id={}", messageDTO.getId());
     }
 
     /**
@@ -62,11 +60,11 @@ public class WebSocketController {
         // 세션에 사용자 정보 저장
         updateSessionAttributes(headerAccessor, userId, roomId);
 
-        // 입장 이벤트 전송
-        String content = user.getUsername() + "님이 채팅방에 입장했습니다.";
-        broadcastMessage("ENTER", user, roomId, content, null, null);
+        // 사용자 입장 이벤트를 Kafka로 발행
+        ChatEvent userJoinEvent = ChatEvent.userJoinEvent(roomId, userId, user.getUsername());
+        chatEventProducer.sendChatRoomEvent(userJoinEvent);
 
-        log.info("사용자 입장: userId={}, roomId={}", userId, roomId);
+        log.info("사용자 입장 이벤트 발행: userId={}, roomId={}", userId, roomId);
     }
 
     /**
@@ -83,11 +81,11 @@ public class WebSocketController {
         // 세션에서 사용자 정보 제거
         clearSessionAttributes(headerAccessor);
 
-        // 퇴장 이벤트 전송
-        String content = user.getUsername() + "님이 채팅방에서 퇴장했습니다.";
-        broadcastMessage("LEAVE", user, roomId, content, null, null);
+        // 사용자 퇴장 이벤트를 Kafka로 발행
+        ChatEvent userLeaveEvent = ChatEvent.userLeaveEvent(roomId, userId, user.getUsername());
+        chatEventProducer.sendChatRoomEvent(userLeaveEvent);
 
-        log.info("사용자 퇴장: userId={}, roomId={}", userId, roomId);
+        log.info("사용자 퇴장 이벤트 발행: userId={}, roomId={}", userId, roomId);
     }
 
     /**
@@ -102,33 +100,6 @@ public class WebSocketController {
     }
 
     //---------------- 유틸리티 메서드 ----------------//
-
-    /**
-     * 공통 메시지 브로드캐스트 처리
-     */
-    private void broadcastMessage(String type, UserResponse sender, Long roomId, String content,
-                                  MessageResponse messageData, Map<String, Object> additionalData) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("type", type);
-        message.put("sender", sender);
-        message.put("roomId", roomId);
-        message.put("content", content);
-        message.put("timestamp", LocalDateTime.now().toString());
-
-        // 메시지 타입에 따른 추가 데이터 설정
-        if (type.equals("MESSAGE") && messageData != null) {
-            message.put("id", messageData.getId());
-            message.put("status", messageData.getStatus().toString());
-        }
-
-        // 추가 데이터가 있으면 포함
-        if (additionalData != null) {
-            message.putAll(additionalData);
-        }
-
-        // 채팅방에 메시지 브로드캐스트
-        messagingTemplate.convertAndSend("/topic/room/" + roomId, message);
-    }
 
     /**
      * 세션 속성 업데이트

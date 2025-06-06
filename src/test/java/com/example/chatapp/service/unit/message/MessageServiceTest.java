@@ -11,7 +11,6 @@ import com.example.chatapp.mapper.MessageMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.service.EntityFinderService;
-import com.example.chatapp.service.MessageEventPublisher;
 import com.example.chatapp.service.MessageValidator;
 import com.example.chatapp.service.impl.MessageServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,9 +65,6 @@ class MessageServiceTest {
     @Mock
     private MessageValidator validator;
 
-    @Mock
-    private MessageEventPublisher messageEventPublisher;
-
     private MessageServiceImpl messageService;
 
     private User testUser;
@@ -79,16 +75,6 @@ class MessageServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 테스트 대상 서비스 초기화
-        messageService = new MessageServiceImpl(
-                messageRepository,
-                messageDomainService,
-                messageMapper,
-                entityFinder,
-                validator,
-                messageEventPublisher
-        );
-
         // 테스트 사용자 설정
         testUser = User.builder()
                 .id(USER_ID)
@@ -177,7 +163,6 @@ class MessageServiceTest {
             verify(validator).validateMessageRequest(validMessageRequest);
             verify(messageDomainService).canUserSendMessage(testUser, testChatRoom);
             verify(messageRepository, never()).save(any(Message.class));
-            verify(messageEventPublisher, never()).publishMessageCreatedEvent(any(Message.class));
         }
     }
 
