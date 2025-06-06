@@ -14,7 +14,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     /**
      * 채팅방 기본 정보만 DTO로 직접 조회
      */
-    @Query("SELECT new com.example.chatapp.dto.response.ChatRoomSimpleResponse(cr.id, cr.name, cr.type) FROM ChatRoom cr")
+    @Query("SELECT new com.example.chatapp.dto.response.ChatRoomSimpleResponse(cr.id, cr.name.value, cr.type) FROM ChatRoom cr")
     List<ChatRoomSimpleResponse> findAllRoomsAsSimpleDto();
 
     /**
