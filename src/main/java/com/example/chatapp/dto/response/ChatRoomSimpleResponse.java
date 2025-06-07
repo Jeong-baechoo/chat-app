@@ -13,7 +13,6 @@ public class ChatRoomSimpleResponse {
     private String name;
     private ChatRoomType type;
 
-    // JPQL에서 NEW 연산자로 직접 생성에 사용할 생성자
     public ChatRoomSimpleResponse(Long id, String name, ChatRoomType type) {
         this.id = id;
         this.name = name;

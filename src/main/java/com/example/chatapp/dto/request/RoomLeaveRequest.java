@@ -15,9 +15,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RoomLeaveRequest {
     
-    @NotNull(message = "사용자 ID는 필수입니다.")
-    private Long userId;
-    
     @NotNull(message = "채팅방 ID는 필수입니다.")
     private Long roomId;
 }

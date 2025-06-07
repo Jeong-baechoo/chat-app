@@ -1,5 +1,7 @@
 package com.example.chatapp.config;
 
+import com.example.chatapp.infrastructure.websocket.WebSocketAuthInterceptor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -7,27 +9,31 @@ import org.springframework.web.socket.config.annotation.*;
 
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final WebSocketAuthInterceptor webSocketAuthInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // 메시지 브로커가 구독(subscribe) 관련 메시지를 처리
         config.enableSimpleBroker("/topic");
-
         // 클라이언트가 메시지를 보낼 때 사용하는 prefix
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // WebSocket 엔드포인트 설정
+        // WebSocket 엔드포인트 설정 (토큰 인증 포함)
         registry.addEndpoint("/ws") // 클라이언트가 WebSocket 연결을 요청할 URL
                 .setAllowedOriginPatterns("*")
+                .addInterceptors(webSocketAuthInterceptor) // 토큰 인증 인터셉터 추가
                 .withSockJS();
-        
+
         // 순수 WebSocket 엔드포인트 추가 (k6 테스트용)
         registry.addEndpoint("/ws-raw")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns("*")
+                .addInterceptors(webSocketAuthInterceptor); // 토큰 인증 인터셉터 추가
     }
 
     @Override
@@ -47,7 +53,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .queueCapacity(200)     // 증가
                 .keepAliveSeconds(60);
     }
-    
+
     @Override
     public void configureClientOutboundChannel(ChannelRegistration registration) {
         // 클라이언트로 메시지를 보내는 스레드 풀 최적화

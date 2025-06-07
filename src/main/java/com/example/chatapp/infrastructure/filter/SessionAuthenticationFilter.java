@@ -1,7 +1,6 @@
 package com.example.chatapp.infrastructure.filter;
 
-import com.example.chatapp.domain.LoginSession;
-import com.example.chatapp.infrastructure.session.SessionStore;
+import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,16 +17,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 세션 기반 인증을 처리하는 필터
- * 모든 요청에 대해 인증을 검사하고 처리
- * AuthInterceptor와의 중복 기능을 통합
+ * JWT 기반 인증을 처리하는 필터
+ * 모든 요청에 대해 JWT 토큰 인증을 검사하고 처리
  */
-//@Component
+@Component
 @RequiredArgsConstructor
 @Slf4j
 public class SessionAuthenticationFilter extends OncePerRequestFilter {
 
-    private final SessionStore sessionStore;
+    private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
 
     private static final String SESSION_COOKIE_NAME = "SESSION_TOKEN";
@@ -56,26 +54,25 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            // 쿠키나 헤더에서 세션 토큰 추출
-            String sessionToken = extractSessionToken(request);
-            if (sessionToken == null) {
+            // 쿠키나 헤더에서 JWT 토큰 추출
+            String jwtToken = extractJwtToken(request);
+            if (jwtToken == null) {
                 handleAuthenticationFailure(response, "인증이 필요합니다");
                 return;
             }
 
-            // 세션 유효성 검증
-            LoginSession session = sessionStore.getSession(sessionToken);
-            if (session == null || session.isExpired()) {
-                if (session != null) {
-                    // 만료된 세션은 제거
-                    sessionStore.removeSession(sessionToken);
-                }
-                handleAuthenticationFailure(response, "세션이 만료되었습니다");
+            // JWT 토큰 유효성 검증
+            if (!jwtTokenProvider.validateToken(jwtToken)) {
+                handleAuthenticationFailure(response, "유효하지 않은 토큰입니다");
                 return;
             }
-            log.debug("인증 성공: userId={}", session.getUserId());
+
+            // JWT에서 사용자 ID 추출
+            Long userId = jwtTokenProvider.getUserId(jwtToken);
+            log.debug("JWT 인증 성공: userId={}", userId);
+            
             // 요청 속성에 사용자 정보 추가
-            request.setAttribute("userId", session.getUserId());
+            request.setAttribute("userId", userId);
             filterChain.doFilter(request, response);
 
         } catch (Exception e) {
@@ -117,30 +114,30 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 요청에서 세션 토큰 추출
+     * 요청에서 JWT 토큰 추출
      * 쿠키 또는 헤더에서 토큰을 찾음
      */
-    private String extractSessionToken(HttpServletRequest request) {
+    private String extractJwtToken(HttpServletRequest request) {
+        // Authorization 헤더에서 추출 (우선순위)
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            log.debug("Authorization 헤더에서 JWT 토큰 추출 성공");
+            return token;
+        }
+
         // 쿠키에서 추출
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if (SESSION_COOKIE_NAME.equals(cookie.getName())) {
-                    log.debug("쿠키에서 세션 토큰 추출 성공: {}", cookie.getValue().substring(0, 6) + "...");
+                    log.debug("쿠키에서 JWT 토큰 추출 성공");
                     return cookie.getValue();
                 }
             }
         }
 
-        // 또는 Authorization 헤더에서 추출
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            log.debug("Authorization 헤더에서 세션 토큰 추출 성공: {}", token.substring(0, 6) + "...");
-            return token;
-        }
-
-        log.debug("세션 토큰 추출 실패: 쿠키 또는 Authorization 헤더에서 토큰을 찾을 수 없음");
+        log.debug("JWT 토큰 추출 실패: 쿠키 또는 Authorization 헤더에서 토큰을 찾을 수 없음");
         return null;
     }
 }

@@ -107,23 +107,23 @@ services:
       - "8080:8080"
     environment:
       # Spring Profile
-      SPRING_PROFILES_ACTIVE: prod
-      
+      SPRING_PROFILES_ACTIVE: dev
+
       # Database Configuration
       DB_USERNAME: chatapp
       DB_PASSWORD: chatapp123
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chatapp?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-      
+      SPRING_DATASOURCE_URL: jdbc:p6spy:mysql://mysql:3306/chatapp?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&useServerPrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048
+
       # Kafka Configuration
       KAFKA_SERVERS: kafka:29092
-      
+
       # Redis Configuration (선택사항)
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      
+
       # CORS Configuration
       FRONTEND_URL: http://localhost:3000
-      
+
       # JVM 설정
       JAVA_OPTS: >
         -server

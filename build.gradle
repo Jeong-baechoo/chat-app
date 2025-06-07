@@ -47,6 +47,11 @@ dependencies {
     // 쿼리 분석을 위한 p6spy 추가
     implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.1'
 
+    // JWT 의존성 추가
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.5'
+
     // TestContainers 의존성 추가
     testImplementation 'org.testcontainers:junit-jupiter:1.19.6'
 

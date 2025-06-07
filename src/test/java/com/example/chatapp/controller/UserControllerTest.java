@@ -1,7 +1,10 @@
 package com.example.chatapp.controller;
 
+import com.example.chatapp.config.WebFilterConfig;
 import com.example.chatapp.dto.response.UserResponse;
-import com.example.chatapp.infrastructure.session.SessionStore;
+import com.example.chatapp.exception.GlobalExceptionHandler;
+import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
+import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
 import com.example.chatapp.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -9,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,8 +26,9 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(UserController.class)
-@AutoConfigureMockMvc(addFilters = false) // 인증 필터 비활성화
+@WebMvcTest(controllers = {UserController.class}, 
+    includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
+@AutoConfigureMockMvc(addFilters = false)
 public class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -31,7 +37,7 @@ public class UserControllerTest {
     private UserService userService;
 
     @MockitoBean
-    private SessionStore sessionStore;
+    private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
     private ObjectMapper objectMapper;
