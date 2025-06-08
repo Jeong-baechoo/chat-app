@@ -1,4 +1,4 @@
-name: Claude Code
+name: Claude PR Assistant
 
 on:
   issue_comment:
@@ -9,20 +9,18 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
-  pull_request:
-    types: [opened, synchronize]
 
 jobs:
-  claude:
+  claude-code-action:
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@claude'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: read
       issues: read
       id-token: write
     steps:
@@ -31,63 +29,8 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Run Claude Code
-        id: claude
+      - name: Run Claude PR Action
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-
-  claude_auto_review:
-    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'synchronize')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: read
-      id-token: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Auto Review with Claude
-        id: claude_review
-        uses: anthropics/claude-code-action@beta
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          direct_prompt: |
-            이 Pull Request에 대해 코드 리뷰를 수행해주세요. 다음 핵심 사항들을 중점적으로 검토해주세요:
-
-            ## 🔍 핵심 검토 항목:
-            
-            1. **코드 품질**
-               - 가독성 및 유지보수성
-               - 네이밍 컨벤션
-               - 중복 코드 제거
-
-            2. **SOLID 원칙 준수**
-               - 단일 책임 원칙 (SRP)
-               - 개방-폐쇄 원칙 (OCP)
-               - 의존성 역전 원칙 (DIP)
-
-            3. **성능상 잠재적 문제**
-               - N+1 쿼리 문제
-               - 불필요한 객체 생성
-               - 메모리 누수 가능성
-
-            4. **관심사 분리**
-               - Controller, Service, Repository 계층 분리
-               - 비즈니스 로직과 인프라 로직 분리
-               - DTO와 Entity 분리
-
-            5. **Spring Boot 모범 사례**
-               - 적절한 어노테이션 사용
-               - 예외 처리
-               - 보안 고려사항
-
-            ## 📝 리뷰 형식:
-            - 중요한 이슈만 간결하게 정리
-            - 구체적인 파일명과 라인 번호 제시
-            - 개선 제안사항 포함
-            - 전체적인 코드 품질 평가
+          timeout_minutes: "60"
