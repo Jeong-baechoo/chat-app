@@ -1,18 +1,18 @@
 package com.example.chatapp.service;
 
 import com.example.chatapp.domain.User;
+import com.example.chatapp.dto.response.AuthResponse;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
 import com.example.chatapp.infrastructure.auth.PasswordEncoder;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -23,10 +23,10 @@ public class AuthService {
      * 사용자 로그인 처리
      * @param username 사용자명
      * @param password 비밀번호
-     * @return 인증 응답 정보 (JWT 토큰, 사용자 ID, 사용자명 등)
+     * @return 인증 응답 DTO
      * @throws UnauthorizedException 인증 실패 시 발생
      */
-    public Map<String, Object> login(String username, String password) {
+    public AuthResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
 
@@ -41,10 +41,10 @@ public class AuthService {
      * 회원가입 처리
      * @param username 사용자명
      * @param password 비밀번호
-     * @return 인증 응답 정보 (JWT 토큰, 사용자 ID, 사용자명 등)
+     * @return 인증 응답 DTO
      * @throws IllegalArgumentException 이미 사용 중인 사용자명인 경우 발생
      */
-    public Map<String, Object> signup(String username, String password) {
+    public AuthResponse signup(String username, String password) {
         if (userRepository.findByUsername(username).isPresent()) {
             throw new IllegalArgumentException("이미 사용 중인 사용자명입니다");
         }
@@ -58,10 +58,10 @@ public class AuthService {
     /**
      * JWT 토큰 유효성 검증
      * @param token JWT 토큰
-     * @return 사용자 정보 (ID, 사용자명)
+     * @return 토큰 검증 응답 DTO
      * @throws UnauthorizedException 토큰이 유효하지 않거나 만료된 경우 발생
      */
-    public Map<String, Object> validateToken(String token) {
+    public AuthResponse validateToken(String token) {
         String cleanToken = jwtTokenProvider.extractToken(token);
         
         if (!jwtTokenProvider.validateToken(cleanToken)) {
@@ -75,12 +75,13 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("userId", user.getId());
-        response.put("username", user.getUsername());
-        response.put("valid", true);
-        response.put("expiresAt", jwtTokenProvider.getExpirationDate(cleanToken));
-        return response;
+        return AuthResponse.builder()
+                .token(cleanToken)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .valid(true)
+                .expiresAt(jwtTokenProvider.getExpirationDate(cleanToken))
+                .build();
     }
 
     /**
@@ -98,17 +99,18 @@ public class AuthService {
      * JWT 토큰을 생성하고 사용자 정보와 함께 반환
      *
      * @param user 인증된 사용자
-     * @return 인증 응답 정보
+     * @return 인증 응답 DTO
      */
-    private Map<String, Object> createAuthResponse(User user) {
+    private AuthResponse createAuthResponse(User user) {
         String jwtToken = jwtTokenProvider.createToken(user.getId(), user.getUsername());
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", jwtToken);
-        response.put("userId", user.getId());
-        response.put("username", user.getUsername());
-        response.put("expiresAt", jwtTokenProvider.getExpirationDate(jwtToken));
-        return response;
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .expiresAt(jwtTokenProvider.getExpirationDate(jwtToken))
+                .valid(true)
+                .build();
     }
 
     /**

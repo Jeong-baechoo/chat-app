@@ -1,6 +1,9 @@
 package com.example.chatapp.controller;
 
 import com.example.chatapp.domain.User;
+import com.example.chatapp.dto.request.LoginRequest;
+import com.example.chatapp.dto.request.SignupRequest;
+import com.example.chatapp.dto.response.AuthResponse;
 import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
@@ -20,8 +23,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -44,7 +45,7 @@ class AuthControllerTest {
     private String validUsername;
     private String validPassword;
     private String validJwtToken;
-    private Map<String, Object> authResponseMap;
+    private AuthResponse authResponse;
     private User validUser;
 
     @BeforeEach
@@ -55,12 +56,14 @@ class AuthControllerTest {
         validJwtToken = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoidGVzdHVzZXIiLCJpYXQiOjE2MzQ1NjcyMzAsImV4cCI6MTYzNDU2OTAzMH0.test-jwt-token";
         validUser = User.create(validUsername, validPassword);
 
-        // 인증 응답 맵 준비
-        authResponseMap = new HashMap<>();
-        authResponseMap.put("token", validJwtToken);
-        authResponseMap.put("userId", validUser.getId());
-        authResponseMap.put("username", validUser.getUsername());
-        authResponseMap.put("expiresAt", new Date(System.currentTimeMillis() + 1800000));
+        // AuthResponse DTO 준비
+        authResponse = AuthResponse.builder()
+                .token(validJwtToken)
+                .userId(validUser.getId())
+                .username(validUser.getUsername())
+                .expiresAt(new Date(System.currentTimeMillis() + 1800000))
+                .valid(true)
+                .build();
 
         // JWT Mock 기본 설정
         when(jwtTokenProvider.validateToken(validJwtToken)).thenReturn(true);
@@ -76,19 +79,21 @@ class AuthControllerTest {
     @DisplayName("로그인 성공 시 토큰과 사용자 정보를 반환하고 쿠키를 설정한다")
     void givenValidCredentials_whenLogin_thenReturnTokenAndUserInfo() throws Exception {
         // given
-        when(authService.login(validUsername, validPassword)).thenReturn(authResponseMap);
+        LoginRequest request = new LoginRequest(validUsername, validPassword);
+        when(authService.login(validUsername, validPassword)).thenReturn(authResponse);
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("username", validUsername, "password", validPassword))));
+                .content(objectMapper.writeValueAsString(request)));
 
         // then
         resultActions.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.token").value(validJwtToken))
                 .andExpect(jsonPath("$.userId").value(validUser.getId()))
-                .andExpect(jsonPath("$.username").value(validUser.getUsername()));
+                .andExpect(jsonPath("$.username").value(validUser.getUsername()))
+                .andExpect(jsonPath("$.valid").value(true));
     }
 
     @Test
@@ -99,10 +104,12 @@ class AuthControllerTest {
         String invalidPassword = "wrongpassword";
         when(authService.login(invalidUsername, invalidPassword)).thenThrow(new UnauthorizedException("Invalid credentials"));
 
+        LoginRequest request = new LoginRequest(invalidUsername, invalidPassword);
+
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("username", invalidUsername, "password", invalidPassword))));
+                .content(objectMapper.writeValueAsString(request)));
 
         // then
         resultActions.andExpect(status().isUnauthorized())
@@ -118,18 +125,22 @@ class AuthControllerTest {
         String newUsername = "newuser";
         String newPassword = "newpassword123";
 
-        Map<String, Object> signupResponse = new HashMap<>();
-        signupResponse.put("token", validJwtToken);
-        signupResponse.put("userId", 2L);
-        signupResponse.put("username", newUsername);
-        signupResponse.put("expiresAt", System.currentTimeMillis() + 1800000);
+        SignupRequest request = new SignupRequest(newUsername, newPassword);
+
+        AuthResponse signupResponse = AuthResponse.builder()
+                .token(validJwtToken)
+                .userId(2L)
+                .username(newUsername)
+                .expiresAt(new Date(System.currentTimeMillis() + 1800000))
+                .valid(true)
+                .build();
 
         when(authService.signup(newUsername, newPassword)).thenReturn(signupResponse);
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("username", newUsername, "password", newPassword))));
+                .content(objectMapper.writeValueAsString(request)));
 
         // then
         resultActions.andExpect(status().isOk())
@@ -148,13 +159,15 @@ class AuthControllerTest {
         String existingUsername = "existinguser";
         String password = "password123";
 
+        SignupRequest request = new SignupRequest(existingUsername, password);
+
         when(authService.signup(existingUsername, password))
             .thenThrow(new IllegalArgumentException("이미 사용 중인 사용자명입니다"));
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("username", existingUsername, "password", password))));
+                .content(objectMapper.writeValueAsString(request)));
 
         // then
         resultActions.andExpect(status().isConflict())
@@ -184,10 +197,13 @@ class AuthControllerTest {
     @DisplayName("유효한 토큰 검증 시 사용자 정보를 반환한다")
     void givenValidToken_whenValidateToken_thenReturnUserInfo() throws Exception {
         // given
-        Map<String, Object> validationResponse = new HashMap<>();
-        validationResponse.put("userId", validUser.getId());
-        validationResponse.put("username", validUser.getUsername());
-        validationResponse.put("valid", true);
+        AuthResponse validationResponse = AuthResponse.builder()
+                .token(validJwtToken)
+                .userId(validUser.getId())
+                .username(validUser.getUsername())
+                .valid(true)
+                .expiresAt(new Date(System.currentTimeMillis() + 1800000))
+                .build();
 
         when(authService.validateToken(validJwtToken)).thenReturn(validationResponse);
 
@@ -230,10 +246,13 @@ class AuthControllerTest {
     @DisplayName("Authorization 헤더에서 토큰 검증이 정상적으로 동작한다")
     void givenValidTokenInHeader_whenValidateToken_thenReturnUserInfo() throws Exception {
         // given
-        Map<String, Object> validationResponse = new HashMap<>();
-        validationResponse.put("userId", validUser.getId());
-        validationResponse.put("username", validUser.getUsername());
-        validationResponse.put("valid", true);
+        AuthResponse validationResponse = AuthResponse.builder()
+                .token(validJwtToken)
+                .userId(validUser.getId())
+                .username(validUser.getUsername())
+                .valid(true)
+                .expiresAt(new Date(System.currentTimeMillis() + 1800000))
+                .build();
 
         when(authService.validateToken(validJwtToken)).thenReturn(validationResponse);
 

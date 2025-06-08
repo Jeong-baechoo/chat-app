@@ -1,15 +1,19 @@
 package com.example.chatapp.controller;
 
 import com.example.chatapp.domain.User;
+import com.example.chatapp.dto.request.LoginRequest;
+import com.example.chatapp.dto.request.SignupRequest;
+import com.example.chatapp.dto.response.AuthResponse;
+import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -27,41 +31,27 @@ public class AuthController {
 
     /**
      * 로그인 API
-     * @param request 로그인 요청 (username, password)
+     * @param request 로그인 요청 DTO (검증용)
      * @param response HTTP 응답 객체 (쿠키 설정용)
      * @return 로그인 결과
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> request, HttpServletResponse response) {
-        String username = request.get("username");
-        String password = request.get("password");
-
-        Map<String, Object> authResponse = authService.login(username, password);
-
-        // 세션 토큰을 쿠키에 저장
-        String token = (String) authResponse.get("token");
-        setCookie(response, token);
-
+    public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
+        AuthResponse authResponse = authService.login(request.getUsername(), request.getPassword());
+        setCookie(response, authResponse.getToken());
         return ResponseEntity.ok(authResponse);
     }
 
     /**
      * 회원가입 API
-     * @param request 회원가입 요청 (username, password)
+     * @param request 회원가입 요청 DTO (검증용)
      * @param response HTTP 응답 객체 (쿠키 설정용)
      * @return 회원가입 결과
      */
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody Map<String, String> request, HttpServletResponse response) {
-        String username = request.get("username");
-        String password = request.get("password");
-
-        Map<String, Object> authResponse = authService.signup(username, password);
-
-        // 세션 토큰을 쿠키에 저장
-        String token = (String) authResponse.get("token");
-        setCookie(response, token);
-
+    public ResponseEntity<AuthResponse> signup(@RequestBody @Valid SignupRequest request, HttpServletResponse response) {
+        AuthResponse authResponse = authService.signup(request.getUsername(), request.getPassword());
+        setCookie(response, authResponse.getToken());
         return ResponseEntity.ok(authResponse);
     }
 
@@ -72,16 +62,10 @@ public class AuthController {
      * @return 토큰 검증 결과
      */
     @PostMapping("/validate")
-    public ResponseEntity<?> validateToken(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        // 쿠키에서 토큰을 가져오거나, Authorization 헤더에서 가져옴
-        String sessionToken = getTokenFromCookieOrHeader(token, authHeader);
-
-        if (sessionToken == null) {
-            throw new UnauthorizedException("인증이 필요합니다");
-        }
-
-        Map<String, Object> response = authService.validateToken(sessionToken);
+    public ResponseEntity<AuthResponse> validateToken(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
+                                                      @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        String sessionToken = extractAndValidateToken(token, authHeader);
+        AuthResponse response = authService.validateToken(sessionToken);
         return ResponseEntity.ok(response);
     }
 
@@ -112,14 +96,9 @@ public class AuthController {
      * @return 현재 사용자 정보
      */
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        // 쿠키에서 토큰을 가져오거나, Authorization 헤더에서 가져옴
-        String sessionToken = getTokenFromCookieOrHeader(token, authHeader);
-
-        if (sessionToken == null) {
-            throw new UnauthorizedException("인증이 필요합니다");
-        }
+    public ResponseEntity<UserResponse> getCurrentUser(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
+                                                       @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        String sessionToken = extractAndValidateToken(token, authHeader);
 
         if (!authService.isValidToken(sessionToken)) {
             throw new UnauthorizedException("유효하지 않은 토큰입니다");
@@ -130,11 +109,27 @@ public class AuthController {
             throw new UnauthorizedException("사용자를 찾을 수 없습니다");
         }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", user.getId());
-        response.put("username", user.getUsername());
+        UserResponse response = UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 토큰 추출 및 검증 (중복 제거를 위한 공통 메서드)
+     * @param cookieToken 쿠키에서 추출한 토큰
+     * @param authHeader Authorization 헤더
+     * @return 검증된 세션 토큰
+     * @throws UnauthorizedException 토큰이 없는 경우
+     */
+    private String extractAndValidateToken(String cookieToken, String authHeader) {
+        String sessionToken = getTokenFromCookieOrHeader(cookieToken, authHeader);
+        if (sessionToken == null) {
+            throw new UnauthorizedException("인증이 필요합니다");
+        }
+        return sessionToken;
     }
 
     /**
@@ -156,6 +151,7 @@ public class AuthController {
 
         return null;
     }
+
 
     /**
      * 쿠키 설정
