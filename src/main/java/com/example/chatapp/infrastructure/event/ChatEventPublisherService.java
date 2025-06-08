@@ -83,6 +83,31 @@ public class ChatEventPublisherService {
     }
 
     /**
+     * 사용자 퇴장 이벤트 발행
+     */
+    @Async
+    public void publishUserLeaveEvent(Long chatRoomId, User user) {
+        try {
+            // 1. Kafka 이벤트 발행
+            ChatEvent userLeaveEvent = ChatEvent.userLeaveEvent(
+                chatRoomId,
+                user.getId(),
+                user.getUsername()
+            );
+
+            chatEventProducer.sendChatRoomEvent(userLeaveEvent);
+
+            // 2. 내부 이벤트는 필요 시 여기에 추가 가능
+
+            log.debug("사용자 퇴장 이벤트 발행 완료: roomId={}, userId={}",
+                    chatRoomId, user.getId());
+        } catch (Exception e) {
+            log.error("사용자 퇴장 이벤트 발행 실패: roomId={}, userId={}, error={}",
+                    chatRoomId, user.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
      * 메시지 전송 이벤트 발행
      * Kafka 이벤트와 Spring 내부 이벤트 모두 발행
      */

@@ -1,10 +1,14 @@
 package com.example.chatapp.controller;
 
+import com.example.chatapp.config.WebFilterConfig;
 import com.example.chatapp.domain.MessageStatus;
 import com.example.chatapp.dto.request.MessageStatusUpdateRequest;
 import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.dto.response.UserResponse;
-import com.example.chatapp.infrastructure.session.SessionStore;
+import com.example.chatapp.exception.GlobalExceptionHandler;
+import com.example.chatapp.infrastructure.auth.AuthContext;
+import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
+import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
 import com.example.chatapp.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -31,8 +37,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(MessageController.class)
-@AutoConfigureMockMvc(addFilters = false) // 인증 필터 비활성화
+@WebMvcTest(controllers = {MessageController.class}, 
+    includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
+@AutoConfigureMockMvc(addFilters = false)
 public class MessageControllerTest {
 
     @Autowired
@@ -45,7 +52,10 @@ public class MessageControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private SessionStore sessionStore;
+    private AuthContext authContext;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
 
     @Test
     @DisplayName("채팅방 ID가 주어졌을 때, 메시지 목록 조회 시 페이징된 메시지가 반환되어야 함")

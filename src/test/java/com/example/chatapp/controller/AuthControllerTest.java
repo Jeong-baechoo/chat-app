@@ -1,9 +1,9 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.domain.LoginSession;
 import com.example.chatapp.domain.User;
+import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.exception.UnauthorizedException;
-import com.example.chatapp.infrastructure.session.SessionStore;
+import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
 import com.example.chatapp.service.AuthService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,20 +12,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AuthController.class)
+@WebMvcTest(controllers = {AuthController.class}, includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
 class AuthControllerTest {
 
     @Autowired
@@ -35,13 +37,13 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockitoBean
-    private SessionStore sessionStore;
+    private JwtTokenProvider jwtTokenProvider;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String validUsername;
     private String validPassword;
-    private String validToken;
+    private String validJwtToken;
     private Map<String, Object> authResponseMap;
     private User validUser;
 
@@ -50,21 +52,24 @@ class AuthControllerTest {
         // 테스트 데이터 초기화
         validUsername = "testuser";
         validPassword = "password123";
-        validToken = UUID.randomUUID().toString();
+        validJwtToken = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoidGVzdHVzZXIiLCJpYXQiOjE2MzQ1NjcyMzAsImV4cCI6MTYzNDU2OTAzMH0.test-jwt-token";
         validUser = User.create(validUsername, validPassword);
 
         // 인증 응답 맵 준비
         authResponseMap = new HashMap<>();
-        authResponseMap.put("token", validToken);
+        authResponseMap.put("token", validJwtToken);
         authResponseMap.put("userId", validUser.getId());
         authResponseMap.put("username", validUser.getUsername());
-        authResponseMap.put("expiresAt", System.currentTimeMillis() + 1800000);
+        authResponseMap.put("expiresAt", new Date(System.currentTimeMillis() + 1800000));
 
-        // Mock 기본 설정
-        LoginSession validSession = new LoginSession(validUser.getId(), System.currentTimeMillis() + 1800000);
-        when(sessionStore.getSession(validToken)).thenReturn(validSession);
-        when(authService.isValidSession(validToken)).thenReturn(true);
-        when(authService.getUserBySessionToken(validToken)).thenReturn(validUser);
+        // JWT Mock 기본 설정
+        when(jwtTokenProvider.validateToken(validJwtToken)).thenReturn(true);
+        when(jwtTokenProvider.getUserId(validJwtToken)).thenReturn(validUser.getId());
+        when(jwtTokenProvider.getUsername(validJwtToken)).thenReturn(validUser.getUsername());
+        when(jwtTokenProvider.extractToken(validJwtToken)).thenReturn(validJwtToken);
+        when(jwtTokenProvider.extractToken("Bearer " + validJwtToken)).thenReturn(validJwtToken);
+        when(authService.isValidToken(validJwtToken)).thenReturn(true);
+        when(authService.getUserByToken(validJwtToken)).thenReturn(validUser);
     }
 
     @Test
@@ -81,7 +86,7 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.token").value(validToken))
+                .andExpect(jsonPath("$.token").value(validJwtToken))
                 .andExpect(jsonPath("$.userId").value(validUser.getId()))
                 .andExpect(jsonPath("$.username").value(validUser.getUsername()));
     }
@@ -114,7 +119,7 @@ class AuthControllerTest {
         String newPassword = "newpassword123";
 
         Map<String, Object> signupResponse = new HashMap<>();
-        signupResponse.put("token", validToken);
+        signupResponse.put("token", validJwtToken);
         signupResponse.put("userId", 2L);
         signupResponse.put("username", newUsername);
         signupResponse.put("expiresAt", System.currentTimeMillis() + 1800000);
@@ -129,7 +134,7 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.token").value(validToken))
+                .andExpect(jsonPath("$.token").value(validJwtToken))
                 .andExpect(jsonPath("$.userId").value(2L))
                 .andExpect(jsonPath("$.username").value(newUsername));
 
@@ -184,11 +189,11 @@ class AuthControllerTest {
         validationResponse.put("username", validUser.getUsername());
         validationResponse.put("valid", true);
 
-        when(authService.validateToken(validToken)).thenReturn(validationResponse);
+        when(authService.validateToken(validJwtToken)).thenReturn(validationResponse);
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/validate")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validToken)));
+                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtToken)));
 
         // then
         resultActions.andExpect(status().isOk())
@@ -197,20 +202,20 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.username").value(validUser.getUsername()))
                 .andExpect(jsonPath("$.valid").value(true));
 
-        verify(authService, times(1)).validateToken(validToken);
+        verify(authService, times(1)).validateToken(validJwtToken);
     }
 
     @Test
     @DisplayName("만료된 토큰 검증 시 401 Unauthorized 응답을 반환한다")
-    void givenInvalidToken_whenValidateToken_thenReturnUnauthorized() throws Exception {
+    void givenInvalidJwtToken_whenValidateToken_thenReturnUnauthorized() throws Exception {
         // given
-        String invalidToken = "invalid-token";
-        when(authService.validateToken(invalidToken))
+        String invalidJwtToken = "invalid-token";
+        when(authService.validateToken(invalidJwtToken))
             .thenThrow(new UnauthorizedException("유효하지 않은 세션입니다"));
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/validate")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", invalidToken)));
+                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", invalidJwtToken)));
 
         // then
         resultActions.andExpect(status().isUnauthorized())
@@ -218,7 +223,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.message").value("유효하지 않은 세션입니다"))
                 .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
-        verify(authService, times(1)).validateToken(invalidToken);
+        verify(authService, times(1)).validateToken(invalidJwtToken);
     }
 
     @Test
@@ -230,11 +235,11 @@ class AuthControllerTest {
         validationResponse.put("username", validUser.getUsername());
         validationResponse.put("valid", true);
 
-        when(authService.validateToken(validToken)).thenReturn(validationResponse);
+        when(authService.validateToken(validJwtToken)).thenReturn(validationResponse);
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/validate")
-                .header("Authorization", "Bearer " + validToken));
+                .header("Authorization", "Bearer " + validJwtToken));
 
         // then
         resultActions.andExpect(status().isOk())
@@ -243,18 +248,18 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.username").value(validUser.getUsername()))
                 .andExpect(jsonPath("$.valid").value(true));
 
-        verify(authService, times(1)).validateToken(validToken);
+        verify(authService, times(1)).validateToken(validJwtToken);
     }
 
     @Test
     @DisplayName("로그아웃 성공 시 세션이 삭제되고 성공 메시지를 반환한다")
     void givenValidToken_whenLogout_thenDeleteSessionAndReturnSuccess() throws Exception {
         // given - 이미 setUp()에서 기본 설정됨
-        doNothing().when(authService).logout(validToken);
+        doNothing().when(authService).logout(validJwtToken);
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/logout")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validToken)));
+                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtToken)));
 
         // then
         resultActions.andExpect(status().isOk())
@@ -262,7 +267,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value("로그아웃 성공"));
 
-        verify(authService, times(1)).logout(validToken);
+        verify(authService, times(1)).logout(validJwtToken);
     }
 
     @Test
@@ -288,7 +293,7 @@ class AuthControllerTest {
 
         // when
         ResultActions resultActions = mockMvc.perform(get("/api/auth/me")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validToken)));
+                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtToken)));
 
         // then
         resultActions.andExpect(status().isOk())
@@ -296,28 +301,27 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.id").value(validUser.getId()))
                 .andExpect(jsonPath("$.username").value(validUser.getUsername()));
 
-        verify(authService, times(1)).isValidSession(validToken);
-        verify(authService, times(1)).getUserBySessionToken(validToken);
+        verify(authService, times(1)).isValidToken(validJwtToken);
+        verify(authService, times(1)).getUserByToken(validJwtToken);
     }
 
     @Test
     @DisplayName("토큰이 유효하지 않을 때 현재 사용자 조회 실패")
-    void givenInvalidToken_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
+    void givenInvalidJwtToken_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
         // given
-        String invalidToken = "invalid-token";
-        when(authService.isValidSession(invalidToken)).thenReturn(false);
+        String invalidJwtToken = "invalid-token";
+        when(authService.isValidToken(invalidJwtToken)).thenReturn(false);
 
         // when
         ResultActions resultActions = mockMvc.perform(get("/api/auth/me")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", invalidToken)));
+                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", invalidJwtToken)));
 
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.message").value("세션이 만료되었습니다"))
-                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.status").value(401));
 
-        verify(authService, never()).getUserBySessionToken(any());
+        verify(authService, never()).getUserByToken(any());
     }
 
     @Test
@@ -329,36 +333,35 @@ class AuthControllerTest {
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.message").value("인증이 필요합니다"))
-                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.error").value("인증이 필요합니다"))
+                .andExpect(jsonPath("$.status").value(401));
 
         // 토큰이 없으므로 서비스 메소드는 호출되지 않아야 함
-        verify(authService, never()).isValidSession(any());
-        verify(authService, never()).getUserBySessionToken(any());
+        verify(authService, never()).isValidToken(any());
+        verify(authService, never()).getUserByToken(any());
     }
 
     @Test
-    @DisplayName("세션은 유효하지만 사용자를 찾을 수 없는 경우")
+    @DisplayName("토큰은 유효하지만 사용자를 찾을 수 없는 경우")
     void givenValidTokenButNoUser_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
         // given
-        String validTokenNoUser = UUID.randomUUID().toString();
-        LoginSession validSession = new LoginSession(999L, System.currentTimeMillis() + 1800000);
+        String validJwtTokenNoUser = "valid-jwt-token-no-user";
 
-        when(sessionStore.getSession(validTokenNoUser)).thenReturn(validSession);
-        when(authService.isValidSession(validTokenNoUser)).thenReturn(true);
-        when(authService.getUserBySessionToken(validTokenNoUser)).thenReturn(null);
+        // JwtTokenProvider 설정 - 토큰을 무효한 것으로 처리
+        when(jwtTokenProvider.validateToken(validJwtTokenNoUser)).thenReturn(false);
 
         // when
         ResultActions resultActions = mockMvc.perform(get("/api/auth/me")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validTokenNoUser)));
+                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtTokenNoUser)));
 
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다"))
-                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
+                .andExpect(jsonPath("$.error").value("유효하지 않은 토큰입니다"))
+                .andExpect(jsonPath("$.status").value(401));
 
-        verify(authService, times(1)).isValidSession(validTokenNoUser);
-        verify(authService, times(1)).getUserBySessionToken(validTokenNoUser);
+        verify(jwtTokenProvider, times(1)).validateToken(validJwtTokenNoUser);
+        verify(authService, never()).isValidToken(any());
+        verify(authService, never()).getUserByToken(any());
     }
 }

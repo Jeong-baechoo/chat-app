@@ -35,6 +35,19 @@ spring:
       allow-credentials: true
       max-age: 3600
 
+  # Redis 설정 (운영용)
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
   # Kafka 설정 (운영용)
   kafka:
     enabled: true

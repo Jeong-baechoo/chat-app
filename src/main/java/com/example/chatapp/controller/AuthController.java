@@ -121,11 +121,11 @@ public class AuthController {
             throw new UnauthorizedException("인증이 필요합니다");
         }
 
-        if (!authService.isValidSession(sessionToken)) {
-            throw new UnauthorizedException("세션이 만료되었습니다");
+        if (!authService.isValidToken(sessionToken)) {
+            throw new UnauthorizedException("유효하지 않은 토큰입니다");
         }
 
-        User user = authService.getUserBySessionToken(sessionToken);
+        User user = authService.getUserByToken(sessionToken);
         if (user == null) {
             throw new UnauthorizedException("사용자를 찾을 수 없습니다");
         }

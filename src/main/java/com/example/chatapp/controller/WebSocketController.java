@@ -9,6 +9,7 @@ import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.kafka.ChatEventProducer;
 import com.example.chatapp.infrastructure.message.ChatEvent;
+import com.example.chatapp.service.ChatRoomService;
 import com.example.chatapp.service.MessageService;
 import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,18 +31,17 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class WebSocketController {
-    private final UserService userService;
     private final MessageService messageService;
-    private final ChatEventProducer chatEventProducer;
+    private final ChatRoomService chatRoomService;
 
     /**
      * 메시지 전송
      */
     @MessageMapping("/message.send")
-    public void sendMessage(@Payload MessageCreateRequest request, SimpMessageHeaderAccessor headerAccessor) {
-        // 세션에서 사용자 ID 가져오기
+    public void sendMessage(@Payload @Valid MessageCreateRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        // WebSocket 세션에서 인증된 사용자 ID 추출
         Long senderId = getUserIdFromSession(headerAccessor);
-        
+
         log.debug("WebSocket 메시지 전송 요청: senderId={}, roomId={}",
                 senderId, request.getChatRoomId());
 
@@ -56,20 +56,17 @@ public class WebSocketController {
      */
     @MessageMapping("/room.enter")
     public void enterRoom(@Payload @Valid RoomEnterRequest request, SimpMessageHeaderAccessor headerAccessor){
-        Long userId = request.getUserId();
+        // WebSocket 세션에서 인증된 사용자 ID 추출
+        Long userId = getUserIdFromSession(headerAccessor);
         Long roomId = request.getRoomId();
 
-        // 사용자 정보 조회
-        UserResponse user = userService.findUserById(userId);
+        // 채팅방 참가자로 추가 (실제 비즈니스 로직)
+        chatRoomService.addParticipantToChatRoom(roomId, userId);
 
         // 세션에 사용자 정보 저장
         updateSessionAttributes(headerAccessor, userId, roomId);
 
-        // 사용자 입장 이벤트를 Kafka로 발행
-        ChatEvent userJoinEvent = ChatEvent.userJoinEvent(roomId, userId, user.getUsername());
-        chatEventProducer.sendChatRoomEvent(userJoinEvent);
-
-        log.info("사용자 입장 이벤트 발행: userId={}, roomId={}", userId, roomId);
+        log.info("사용자 채팅방 입장 완료: userId={}, roomId={}", userId, roomId);
     }
 
     /**
@@ -77,20 +74,17 @@ public class WebSocketController {
      */
     @MessageMapping("/room.leave")
     public void leaveRoom(@Payload @Valid RoomLeaveRequest request, SimpMessageHeaderAccessor headerAccessor) {
-        Long userId = request.getUserId();
+        // WebSocket 세션에서 인증된 사용자 ID 추출
+        Long userId = getUserIdFromSession(headerAccessor);
         Long roomId = request.getRoomId();
 
-        // 사용자 정보 조회
-        UserResponse user = userService.findUserById(userId);
+        // 채팅방에서 참가자 제거 (실제 비즈니스 로직)
+        chatRoomService.removeParticipantFromChatRoom(roomId, userId);
 
-        // 세션에서 사용자 정보 제거
-        clearSessionAttributes(headerAccessor);
+        // 현재 채팅방에서만 퇴장 (userId는 보존, roomId만 제거)
+        removeCurrentRoomFromSession(headerAccessor);
 
-        // 사용자 퇴장 이벤트를 Kafka로 발행
-        ChatEvent userLeaveEvent = ChatEvent.userLeaveEvent(roomId, userId, user.getUsername());
-        chatEventProducer.sendChatRoomEvent(userLeaveEvent);
-
-        log.info("사용자 퇴장 이벤트 발행: userId={}, roomId={}", userId, roomId);
+        log.info("사용자 채팅방 퇴장 완료: userId={}, roomId={}", userId, roomId);
     }
 
     /**
@@ -118,12 +112,12 @@ public class WebSocketController {
     }
 
     /**
-     * 세션 속성 제거
+     * 현재 채팅방 정보만 세션에서 제거 (userId는 보존)
      */
-    private void clearSessionAttributes(SimpMessageHeaderAccessor headerAccessor) {
+    private void removeCurrentRoomFromSession(SimpMessageHeaderAccessor headerAccessor) {
         Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
         if (sessionAttributes != null) {
-            sessionAttributes.remove("userId");
+            // userId는 WebSocket 연결 동안 유지되어야 하므로 제거하지 않음
             sessionAttributes.remove("roomId");
         }
     }
@@ -133,14 +127,14 @@ public class WebSocketController {
      */
     private Map<String, Object> createErrorMessage(Exception e) {
         String status = determineErrorStatus(e);
-        
+
         return Map.of(
             "timestamp", LocalDateTime.now().toString(),
             "status", status,
             "message", e.getMessage()
         );
     }
-    
+
     /**
      * 예외 타입에 따른 상태 코드 결정
      */
@@ -164,12 +158,12 @@ public class WebSocketController {
         if (sessionAttributes == null) {
             throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
         }
-        
+
         Object userId = sessionAttributes.get("userId");
         if (userId == null) {
             throw new IllegalArgumentException("인증되지 않은 사용자입니다.");
         }
-        
+
         return Long.valueOf(userId.toString());
     }
 

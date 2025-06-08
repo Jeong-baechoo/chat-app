@@ -5,10 +5,13 @@ import com.example.chatapp.domain.service.ChatRoomDomainService;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
+import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
+import com.example.chatapp.infrastructure.message.ChatEvent;
 import com.example.chatapp.mapper.ChatRoomMapper;
+import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.service.ChatRoomService;
@@ -32,7 +35,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository participantRepo;
     private final ChatRoomMapper chatRoomMapper;
-    private final ChatEventPublisherService eventPublisher;
+    private final UserMapper userMapper;
+    private final ChatEventPublisherService chatEventPublisherService;
     private final EntityFinderService entityFinderService;
     private final ChatRoomDomainService chatRoomDomainService;
 
@@ -52,7 +56,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         ChatRoom savedChatRoom = chatRoomRepository.save(chatRoom);
 
         // 이벤트 발행 로직을 별도 서비스로 위임
-        eventPublisher.publishRoomCreatedEvent(savedChatRoom, creator);
+        chatEventPublisherService.publishRoomCreatedEvent(savedChatRoom, creator);
 
         log.debug("채팅방 생성 완료: roomId={}, creatorId={}",
                 savedChatRoom.getId(), creator.getId());
@@ -96,7 +100,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             chatRoomDomainService.joinChatRoom(chatRoom, user);
             
             // 이벤트 발행 로직을 별도 서비스로 위임
-            eventPublisher.publishUserJoinEvent(chatRoomId, user);
+            chatEventPublisherService.publishUserJoinEvent(chatRoomId, user);
         }
 
         return chatRoomMapper.toResponse(chatRoom);
@@ -112,6 +116,28 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         log.debug("채팅방 삭제 완료: id={}", chatRoomId);
 
         // TODO: 채팅방 삭제 이벤트 발행 고려
+    }
+
+    @Override
+    @Transactional
+    public ChatRoomResponse removeParticipantFromChatRoom(Long chatRoomId, Long userId) {
+        ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
+        User user = findUserById(userId);
+
+        // 참가자로 등록되어 있는지 확인
+        if (!participantRepo.existsByUserIdAndChatRoomId(userId, chatRoomId)) {
+            throw new ChatRoomException("해당 채팅방의 참가자가 아닙니다.");
+        }
+
+        // 채팅방에서 참가자 제거
+        participantRepo.deleteByUserIdAndChatRoomId(userId, chatRoomId);
+        ChatRoom updatedChatRoom = findChatRoomByIdOrThrow(chatRoomId);
+
+        // 사용자 퇴장 이벤트 발행
+        chatEventPublisherService.publishUserLeaveEvent(chatRoomId, user);
+
+        log.info("사용자가 채팅방에서 퇴장했습니다: userId={}, chatRoomId={}", userId, chatRoomId);
+        return chatRoomMapper.toResponse(updatedChatRoom);
     }
 
     // 내부 헬퍼 메소드
