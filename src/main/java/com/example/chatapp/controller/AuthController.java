@@ -122,7 +122,7 @@ public class AuthController {
         }
 
         if (!authService.isValidToken(sessionToken)) {
-            throw new UnauthorizedException("토큰이 만료되었습니다");
+            throw new UnauthorizedException("유효하지 않은 토큰입니다");
         }
 
         User user = authService.getUserByToken(sessionToken);

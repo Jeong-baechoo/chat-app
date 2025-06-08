@@ -121,12 +121,14 @@ public class AuthService {
             String cleanToken = jwtTokenProvider.extractToken(token);
             
             if (!jwtTokenProvider.validateToken(cleanToken)) {
+                log.debug("JWT 토큰 검증 실패: 유효하지 않은 토큰");
                 return null;
             }
 
             Long userId = jwtTokenProvider.getUserId(cleanToken);
             return userRepository.findById(userId).orElse(null);
         } catch (Exception e) {
+            log.warn("JWT 토큰 파싱 중 예외 발생: {}", e.getMessage(), e);
             return null;
         }
     }
