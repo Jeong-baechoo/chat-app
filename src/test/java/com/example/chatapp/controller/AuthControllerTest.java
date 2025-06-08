@@ -4,6 +4,7 @@ import com.example.chatapp.domain.User;
 import com.example.chatapp.dto.request.LoginRequest;
 import com.example.chatapp.dto.request.SignupRequest;
 import com.example.chatapp.dto.response.AuthResponse;
+import com.example.chatapp.dto.response.LogoutResponse;
 import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.exception.UserException;

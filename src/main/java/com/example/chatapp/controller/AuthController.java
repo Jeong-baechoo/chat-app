@@ -4,6 +4,7 @@ import com.example.chatapp.domain.User;
 import com.example.chatapp.dto.request.LoginRequest;
 import com.example.chatapp.dto.request.SignupRequest;
 import com.example.chatapp.dto.response.AuthResponse;
+import com.example.chatapp.dto.response.LogoutResponse;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
@@ -15,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 
 /**
  * JWT 기반 인증 관련 API 컨트롤러
@@ -74,7 +74,6 @@ public class AuthController {
                 "message", "로그아웃되었습니다",
                 "timestamp", java.time.LocalDateTime.now().toString()
         ));
-    }
 
     /**
      * 현재 사용자 정보 조회 API
