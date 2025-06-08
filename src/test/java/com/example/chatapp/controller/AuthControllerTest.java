@@ -181,7 +181,7 @@ class AuthControllerTest {
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/logout")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtToken)));
+                .cookie(new jakarta.servlet.http.Cookie("JWT_TOKEN", validJwtToken)));
 
         // then
         resultActions.andExpect(status().isOk())

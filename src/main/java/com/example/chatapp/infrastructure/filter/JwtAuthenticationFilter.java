@@ -28,7 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
 
-    private static final String SESSION_COOKIE_NAME = "SESSION_TOKEN";
+    private static final String JWT_COOKIE_NAME = "JWT_TOKEN";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -69,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // JWT에서 사용자 ID 추출
             Long userId = jwtTokenProvider.getUserId(jwtToken);
-            log.debug("JWT 인증 성공: userId={}", userId);
+            log.debug("JWT 인증 성공: userId=[PROTECTED]");
             
             // 요청 속성에 사용자 정보 추가
             request.setAttribute("userId", userId);
@@ -84,7 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * 인증 실패 처리를 일관된 형식으로 반환
      */
     private void handleAuthenticationFailure(HttpServletResponse response, String message) throws IOException {
-        log.debug("인증 실패: {}", message);
+        log.warn("JWT 인증 실패");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
 
@@ -129,7 +129,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
-                if (SESSION_COOKIE_NAME.equals(cookie.getName())) {
+                if (JWT_COOKIE_NAME.equals(cookie.getName())) {
                     log.debug("쿠키에서 JWT 토큰 추출 성공");
                     return cookie.getValue();
                 }

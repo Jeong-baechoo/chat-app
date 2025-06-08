@@ -20,8 +20,14 @@ public class JwtTokenProvider {
     private final long tokenValidityMs;
 
     public JwtTokenProvider(
-            @Value("${app.jwt.secret:mySecretKey1234567890123456789012345678901234567890}") String secret,
-            @Value("${app.jwt.expiration:1800000}") long tokenValidityMs) { // 기본 30분
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.expiration:1800000}") long tokenValidityMs) {
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalArgumentException("JWT secret must be provided via environment variable JWT_SECRET");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 32 characters long");
+        }
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes());
         this.tokenValidityMs = tokenValidityMs;
     }
@@ -74,7 +80,7 @@ public class JwtTokenProvider {
             getClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            log.debug("Invalid JWT token: {}", e.getMessage());
+            log.warn("Invalid JWT token: {}", e.getClass().getSimpleName());
             return false;
         }
     }

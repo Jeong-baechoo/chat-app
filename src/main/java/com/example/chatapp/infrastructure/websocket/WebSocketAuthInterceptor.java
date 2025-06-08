@@ -93,7 +93,7 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             
             for (String cookie : cookies) {
                 String[] cookieParts = cookie.trim().split("=", 2);
-                if (cookieParts.length == 2 && "SESSION_TOKEN".equals(cookieParts[0])) {
+                if (cookieParts.length == 2 && "JWT_TOKEN".equals(cookieParts[0])) {
                     log.debug("Cookie에서 토큰 추출 성공");
                     return cookieParts[1];
                 }

@@ -22,3 +22,9 @@ server:
 chat:
   websocket:
     endpoint: /ws
+
+# JWT 설정
+app:
+  jwt:
+    secret: ${JWT_SECRET:#{null}}  # 환경변수 필수
+    expiration: ${JWT_EXPIRATION:1800000}  # 30분 (밀리초)
