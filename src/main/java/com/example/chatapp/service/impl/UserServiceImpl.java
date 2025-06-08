@@ -1,10 +1,8 @@
 package com.example.chatapp.service.impl;
 
-import com.example.chatapp.domain.LoginSession;
 import com.example.chatapp.domain.User;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UserException;
-import com.example.chatapp.infrastructure.session.SessionStore;
 import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.UserService;
@@ -15,8 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +20,6 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final SessionStore sessionStore;
 
     @Override
     @Transactional(readOnly = true)
@@ -33,7 +28,7 @@ public class UserServiceImpl implements UserService {
 
         return users.stream()
                 .map(userMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -65,18 +60,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> findLoggedInUsers() {
-        // 세션에서 사용자 ID 목록 추출
-        Set<Long> userIds = sessionStore.getAllSessions().stream()
-                .map(LoginSession::getUserId)
-                .collect(Collectors.toSet());
-        
-        // 한 번에 모든 사용자 조회 (IN 쿼리 사용)
-        List<User> users = userRepository.findAllById(List.copyOf(userIds));
-        List<UserResponse> result = users.stream()
-                .map(userMapper::toResponse)
-                .toList();
-        
-        log.debug("로그인된 사용자 조회: {}명 조회됨", result.size());
-        return result;
+        // JWT Stateless 환경에서는 로그인된 사용자 추적이 불가능
+        // 필요시 Redis 등을 이용한 별도 구현 필요
+        log.warn("findLoggedInUsers는 JWT Stateless 환경에서 지원되지 않습니다");
+        return List.of();
     }
 }

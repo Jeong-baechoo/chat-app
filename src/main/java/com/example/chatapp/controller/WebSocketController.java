@@ -3,25 +3,19 @@ package com.example.chatapp.controller;
 import com.example.chatapp.dto.request.MessageCreateRequest;
 import com.example.chatapp.dto.request.RoomEnterRequest;
 import com.example.chatapp.dto.request.RoomLeaveRequest;
-import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
-import com.example.chatapp.infrastructure.kafka.ChatEventProducer;
-import com.example.chatapp.infrastructure.message.ChatEvent;
 import com.example.chatapp.service.ChatRoomService;
 import com.example.chatapp.service.MessageService;
-import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
-import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
@@ -39,13 +33,11 @@ public class WebSocketController {
      */
     @MessageMapping("/message.send")
     public void sendMessage(@Payload @Valid MessageCreateRequest request, SimpMessageHeaderAccessor headerAccessor) {
-        // WebSocket 세션에서 인증된 사용자 ID 추출
         Long senderId = getUserIdFromSession(headerAccessor);
 
         log.debug("WebSocket 메시지 전송 요청: senderId={}, roomId={}",
                 senderId, request.getChatRoomId());
 
-        // 메시지 저장 (Kafka 이벤트는 MessageService에서 자동 발행)
         messageService.sendMessage(request, senderId);
 
         log.debug("메시지 전송 요청 처리 완료");

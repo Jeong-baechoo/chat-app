@@ -9,6 +9,7 @@ import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +18,8 @@ import org.springframework.web.bind.annotation.*;
 
 
 /**
- * 인증 관련 API 컨트롤러
- * 로그인, 회원가입, 토큰 검증, 로그아웃 등의 엔드포인트 제공
+ * JWT 기반 인증 관련 API 컨트롤러
+ * 로그인, 회원가입, 로그아웃, 사용자 정보 조회 등의 엔드포인트 제공
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -26,93 +27,69 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private static final String SESSION_COOKIE_NAME = "SESSION_TOKEN";
-    private static final int COOKIE_MAX_AGE = 30 * 60;
+    private static final String JWT_COOKIE_NAME = "JWT_TOKEN";
+    private static final int COOKIE_MAX_AGE = 30 * 60; // 30분
 
     /**
-     * 로그인 API
+     * 로그인 API - JWT 토큰 발급
      * @param request 로그인 요청 DTO (검증용)
-     * @param response HTTP 응답 객체 (쿠키 설정용)
-     * @return 로그인 결과
+     * @param response HTTP 응답 객체 (JWT 쿠키 설정용)
+     * @return JWT 토큰과 사용자 정보
      */
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
         AuthResponse authResponse = authService.login(request.getUsername(), request.getPassword());
-        setCookie(response, authResponse.getToken());
+        setJwtCookie(response, authResponse.getToken());
         return ResponseEntity.ok(authResponse);
     }
 
     /**
-     * 회원가입 API
+     * 회원가입 API - 회원가입 후 JWT 토큰 자동 발급
      * @param request 회원가입 요청 DTO (검증용)
-     * @param response HTTP 응답 객체 (쿠키 설정용)
-     * @return 회원가입 결과
+     * @param response HTTP 응답 객체 (JWT 쿠키 설정용)
+     * @return JWT 토큰과 생성된 사용자 정보
      */
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signup(@RequestBody @Valid SignupRequest request, HttpServletResponse response) {
         AuthResponse authResponse = authService.signup(request.getUsername(), request.getPassword());
-        setCookie(response, authResponse.getToken());
+        setJwtCookie(response, authResponse.getToken());
         return ResponseEntity.ok(authResponse);
     }
 
-    /**
-     * 토큰 검증 API
-     * @param token 쿠키의 세션 토큰
-     * @param authHeader Authorization 헤더
-     * @return 토큰 검증 결과
-     */
-    @PostMapping("/validate")
-    public ResponseEntity<AuthResponse> validateToken(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                                      @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        String sessionToken = extractAndValidateToken(token, authHeader);
-        AuthResponse response = authService.validateToken(sessionToken);
-        return ResponseEntity.ok(response);
-    }
 
     /**
-     * 로그아웃 API
-     * @param token 쿠키의 세션 토큰
-     * @param response HTTP 응답 객체 (쿠키 삭제용)
+     * 로그아웃 API - JWT 쿠키 삭제
+     * JWT는 stateless이므로 서버에서 별도 처리 없이 쿠키만 삭제
+     * @param response HTTP 응답 객체 (JWT 쿠키 삭제용)
      * @return 로그아웃 결과
      */
     @PostMapping("/logout")
-    public ResponseEntity<LogoutResponse> logout(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                                 HttpServletResponse response) {
-        if (token != null) {
-            // 세션 삭제
-            authService.logout(token);
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        // JWT 쿠키 삭제
+        clearJwtCookie(response);
 
-            // 쿠키 삭제
-            deleteCookie(response, SESSION_COOKIE_NAME);
-        }
+//        authService.logout();
 
-        LogoutResponse logoutResponse = LogoutResponse.builder()
-                .success(true)
-                .message("로그아웃 성공")
-                .build();
-
-        return ResponseEntity.ok(logoutResponse);
-    }
+        return ResponseEntity.ok(Map.of(
+                "message", "로그아웃되었습니다",
+                "timestamp", java.time.LocalDateTime.now().toString()
+        ));
 
     /**
      * 현재 사용자 정보 조회 API
-     * @param token 쿠키의 세션 토큰
-     * @param authHeader Authorization 헤더
+     * JwtAuthenticationFilter에서 이미 인증된 사용자 ID를 사용
+     * @param request HTTP 요청 객체 (필터에서 설정한 userId 속성 사용)
      * @return 현재 사용자 정보
      */
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getCurrentUser(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                                       @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        String sessionToken = extractAndValidateToken(token, authHeader);
-
-        if (!authService.isValidToken(sessionToken)) {
-            throw new UnauthorizedException("유효하지 않은 토큰입니다");
+    public ResponseEntity<UserResponse> getCurrentUser(HttpServletRequest request) {
+        // 필터에서 설정한 사용자 ID 추출
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            throw new UnauthorizedException("인증이 필요합니다");
         }
 
-        User user = authService.getUserByToken(sessionToken);
-        if (user == null) {
-            throw new UnauthorizedException("사용자를 찾을 수 없습니다");
-        }
+        User user = authService.getUserById(userId);
 
         UserResponse response = UserResponse.builder()
                 .id(user.getId())
@@ -122,65 +99,32 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 토큰 추출 및 검증 (중복 제거를 위한 공통 메서드)
-     * @param cookieToken 쿠키에서 추출한 토큰
-     * @param authHeader Authorization 헤더
-     * @return 검증된 세션 토큰
-     * @throws UnauthorizedException 토큰이 없는 경우
-     */
-    private String extractAndValidateToken(String cookieToken, String authHeader) {
-        String sessionToken = getTokenFromCookieOrHeader(cookieToken, authHeader);
-        if (sessionToken == null) {
-            throw new UnauthorizedException("인증이 필요합니다");
-        }
-        return sessionToken;
-    }
-
-    /**
-     * 쿠키나 헤더에서 세션 토큰 추출
-     * @param cookieToken 쿠키에서 추출한 토큰
-     * @param authHeader Authorization 헤더
-     * @return 세션 토큰 또는 null
-     */
-    private String getTokenFromCookieOrHeader(String cookieToken, String authHeader) {
-        // 쿠키에서 토큰을 가져옴
-        if (cookieToken != null) {
-            return cookieToken;
-        }
-
-        // 또는 Authorization 헤더에서 가져옴
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
-
-        return null;
-    }
 
 
     /**
-     * 쿠키 설정
+     * JWT 쿠키 설정
      *
      * @param response HTTP 응답
-     * @param value    쿠키 값
+     * @param jwtToken JWT 토큰 값
      */
-    private void setCookie(HttpServletResponse response, String value) {
-        Cookie cookie = new Cookie(AuthController.SESSION_COOKIE_NAME, value);
-        cookie.setHttpOnly(true);  // 자바스크립트에서 접근 불가
-        cookie.setMaxAge(AuthController.COOKIE_MAX_AGE);
+    private void setJwtCookie(HttpServletResponse response, String jwtToken) {
+        Cookie cookie = new Cookie(JWT_COOKIE_NAME, jwtToken);
+        cookie.setHttpOnly(true);  // XSS 공격 방지
+        cookie.setSecure(false); // HTTPS에서만 전송 (개발 환경에서는 false)
+        cookie.setMaxAge(COOKIE_MAX_AGE);
         cookie.setPath("/");
         response.addCookie(cookie);
     }
 
     /**
-     * 쿠키 삭제
+     * JWT 쿠키 삭제
      * @param response HTTP 응답
-     * @param name 삭제할 쿠키 이름
      */
-    private void deleteCookie(HttpServletResponse response, String name) {
-        Cookie cookie = new Cookie(name, null);
+    private void clearJwtCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie(JWT_COOKIE_NAME, null);
         cookie.setMaxAge(0);  // 즉시 만료
         cookie.setPath("/");
+        cookie.setHttpOnly(true);
         response.addCookie(cookie);
     }
 }

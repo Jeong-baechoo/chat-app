@@ -5,7 +5,9 @@ import com.example.chatapp.dto.response.AuthResponse;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
 import com.example.chatapp.infrastructure.auth.PasswordEncoder;
 import com.example.chatapp.exception.UnauthorizedException;
+import com.example.chatapp.exception.UserException;
 import com.example.chatapp.repository.UserRepository;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,10 +30,10 @@ public class AuthService {
      */
     public AuthResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
+                .orElseThrow(() -> new UnauthorizedException("사용자명 또는 비밀번호가 일치하지 않습니다"));
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new UnauthorizedException("비밀번호가 일치하지 않습니다");
+            throw new UnauthorizedException("사용자명 또는 비밀번호가 일치하지 않습니다");
         }
 
         return createAuthResponse(user);
@@ -44,9 +46,10 @@ public class AuthService {
      * @return 인증 응답 DTO
      * @throws IllegalArgumentException 이미 사용 중인 사용자명인 경우 발생
      */
+    @Transactional
     public AuthResponse signup(String username, String password) {
         if (userRepository.findByUsername(username).isPresent()) {
-            throw new IllegalArgumentException("이미 사용 중인 사용자명입니다");
+            throw new UserException("이미 사용 중인 사용자명입니다");
         }
 
         String encodedPassword = passwordEncoder.encode(password);
@@ -55,34 +58,6 @@ public class AuthService {
         return createAuthResponse(userRepository.save(user));
     }
 
-    /**
-     * JWT 토큰 유효성 검증
-     * @param token JWT 토큰
-     * @return 토큰 검증 응답 DTO
-     * @throws UnauthorizedException 토큰이 유효하지 않거나 만료된 경우 발생
-     */
-    public AuthResponse validateToken(String token) {
-        String cleanToken = jwtTokenProvider.extractToken(token);
-        
-        if (!jwtTokenProvider.validateToken(cleanToken)) {
-            throw new UnauthorizedException("유효하지 않은 JWT 토큰입니다");
-        }
-
-        Long userId = jwtTokenProvider.getUserId(cleanToken);
-        String username = jwtTokenProvider.getUsername(cleanToken);
-
-        // 사용자가 여전히 존재하는지 확인
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
-
-        return AuthResponse.builder()
-                .token(cleanToken)
-                .userId(user.getId())
-                .username(user.getUsername())
-                .valid(true)
-                .expiresAt(jwtTokenProvider.getExpirationDate(cleanToken))
-                .build();
-    }
 
     /**
      * 로그아웃 처리 (JWT는 Stateless이므로 서버에서 할 일이 없음)
@@ -118,51 +93,14 @@ public class AuthService {
      * @param token JWT 토큰
      * @return 사용자 객체 또는 null (토큰이 유효하지 않은 경우)
      */
-    public User getUserByToken(String token) {
-        try {
-            String cleanToken = jwtTokenProvider.extractToken(token);
-            
-            if (!jwtTokenProvider.validateToken(cleanToken)) {
-                log.debug("JWT 토큰 검증 실패: 유효하지 않은 토큰");
-                return null;
-            }
-
-            Long userId = jwtTokenProvider.getUserId(cleanToken);
-            return userRepository.findById(userId).orElse(null);
-        } catch (Exception e) {
-            log.warn("JWT 토큰 파싱 중 예외 발생: {}", e.getMessage(), e);
-            return null;
-        }
-    }
-
     /**
-     * JWT 토큰이 유효한지 확인
-     * @param token JWT 토큰
-     * @return 유효 여부
+     * 사용자 ID로 사용자 조회
+     * @param userId 사용자 ID
+     * @return 사용자 객체
+     * @throws UnauthorizedException 사용자를 찾을 수 없는 경우
      */
-    public boolean isValidToken(String token) {
-        try {
-            String cleanToken = jwtTokenProvider.extractToken(token);
-            return jwtTokenProvider.validateToken(cleanToken);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * JWT 토큰에서 사용자 ID 추출
-     * @param token JWT 토큰
-     * @return 사용자 ID 또는 null
-     */
-    public Long getUserIdFromToken(String token) {
-        try {
-            String cleanToken = jwtTokenProvider.extractToken(token);
-            if (jwtTokenProvider.validateToken(cleanToken)) {
-                return jwtTokenProvider.getUserId(cleanToken);
-            }
-        } catch (Exception e) {
-            // 토큰 파싱 실패
-        }
-        return null;
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
     }
 }
