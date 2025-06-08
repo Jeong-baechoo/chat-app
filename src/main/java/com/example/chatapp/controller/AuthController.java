@@ -8,6 +8,7 @@ import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -55,19 +56,6 @@ public class AuthController {
         return ResponseEntity.ok(authResponse);
     }
 
-    /**
-     * 토큰 검증 API
-     * @param token 쿠키의 세션 토큰
-     * @param authHeader Authorization 헤더
-     * @return 토큰 검증 결과
-     */
-    @PostMapping("/validate")
-    public ResponseEntity<AuthResponse> validateToken(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                                      @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        String sessionToken = extractAndValidateToken(token, authHeader);
-        AuthResponse response = authService.validateToken(sessionToken);
-        return ResponseEntity.ok(response);
-    }
 
     /**
      * 로그아웃 API
@@ -91,23 +79,19 @@ public class AuthController {
 
     /**
      * 현재 사용자 정보 조회 API
-     * @param token 쿠키의 세션 토큰
-     * @param authHeader Authorization 헤더
+     * 필터에서 이미 인증된 사용자 ID를 사용
+     * @param request HTTP 요청 객체 (필터에서 설정한 userId 속성 사용)
      * @return 현재 사용자 정보
      */
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getCurrentUser(@CookieValue(name = SESSION_COOKIE_NAME, required = false) String token,
-                                                       @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        String sessionToken = extractAndValidateToken(token, authHeader);
-
-        if (!authService.isValidToken(sessionToken)) {
-            throw new UnauthorizedException("유효하지 않은 토큰입니다");
+    public ResponseEntity<UserResponse> getCurrentUser(HttpServletRequest request) {
+        // 필터에서 설정한 사용자 ID 추출
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            throw new UnauthorizedException("인증이 필요합니다");
         }
 
-        User user = authService.getUserByToken(sessionToken);
-        if (user == null) {
-            throw new UnauthorizedException("사용자를 찾을 수 없습니다");
-        }
+        User user = authService.getUserById(userId);
 
         UserResponse response = UserResponse.builder()
                 .id(user.getId())
@@ -117,40 +101,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 토큰 추출 및 검증 (중복 제거를 위한 공통 메서드)
-     * @param cookieToken 쿠키에서 추출한 토큰
-     * @param authHeader Authorization 헤더
-     * @return 검증된 세션 토큰
-     * @throws UnauthorizedException 토큰이 없는 경우
-     */
-    private String extractAndValidateToken(String cookieToken, String authHeader) {
-        String sessionToken = getTokenFromCookieOrHeader(cookieToken, authHeader);
-        if (sessionToken == null) {
-            throw new UnauthorizedException("인증이 필요합니다");
-        }
-        return sessionToken;
-    }
-
-    /**
-     * 쿠키나 헤더에서 세션 토큰 추출
-     * @param cookieToken 쿠키에서 추출한 토큰
-     * @param authHeader Authorization 헤더
-     * @return 세션 토큰 또는 null
-     */
-    private String getTokenFromCookieOrHeader(String cookieToken, String authHeader) {
-        // 쿠키에서 토큰을 가져옴
-        if (cookieToken != null) {
-            return cookieToken;
-        }
-
-        // 또는 Authorization 헤더에서 가져옴
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
-        }
-
-        return null;
-    }
 
 
     /**

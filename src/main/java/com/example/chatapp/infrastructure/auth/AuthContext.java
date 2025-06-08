@@ -11,7 +11,7 @@ import org.springframework.web.context.annotation.RequestScope;
 /**
  * 현재 인증된 사용자 정보에 접근하기 위한 컴포넌트
  * 요청 스코프로 지정하여 각 요청마다 새로운 인스턴스가 생성됨
- * SessionAuthenticationFilter에서 설정한 userId 속성을 활용
+ * JwtAuthenticationFilter에서 설정한 userId 속성을 활용
  */
 @Component
 @RequestScope

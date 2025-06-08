@@ -6,6 +6,7 @@ import com.example.chatapp.dto.request.SignupRequest;
 import com.example.chatapp.dto.response.AuthResponse;
 import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.exception.UnauthorizedException;
+import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
 import com.example.chatapp.service.AuthService;
 
@@ -65,14 +66,8 @@ class AuthControllerTest {
                 .valid(true)
                 .build();
 
-        // JWT Mock 기본 설정
-        when(jwtTokenProvider.validateToken(validJwtToken)).thenReturn(true);
-        when(jwtTokenProvider.getUserId(validJwtToken)).thenReturn(validUser.getId());
-        when(jwtTokenProvider.getUsername(validJwtToken)).thenReturn(validUser.getUsername());
-        when(jwtTokenProvider.extractToken(validJwtToken)).thenReturn(validJwtToken);
-        when(jwtTokenProvider.extractToken("Bearer " + validJwtToken)).thenReturn(validJwtToken);
-        when(authService.isValidToken(validJwtToken)).thenReturn(true);
-        when(authService.getUserByToken(validJwtToken)).thenReturn(validUser);
+        // AuthService Mock 기본 설정
+        when(authService.getUserById(validUser.getId())).thenReturn(validUser);
     }
 
     @Test
@@ -162,7 +157,7 @@ class AuthControllerTest {
         SignupRequest request = new SignupRequest(existingUsername, password);
 
         when(authService.signup(existingUsername, password))
-            .thenThrow(new IllegalArgumentException("이미 사용 중인 사용자명입니다"));
+            .thenThrow(new UserException("이미 사용 중인 사용자명입니다"));
 
         // when
         ResultActions resultActions = mockMvc.perform(post("/api/auth/signup")
@@ -176,98 +171,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.status").value("CONFLICT"));
 
         verify(authService, times(1)).signup(existingUsername, password);
-    }
-
-    @Test
-    @DisplayName("토큰 없이 검증 요청 시 401 Unauthorized 응답을 반환한다")
-    void givenNoToken_whenValidateToken_thenReturnUnauthorized() throws Exception {
-        // when
-        ResultActions resultActions = mockMvc.perform(post("/api/auth/validate"));
-
-        // then
-        resultActions.andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.message").value("인증이 필요합니다"))
-                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
-
-        verify(authService, never()).validateToken(any());
-    }
-
-    @Test
-    @DisplayName("유효한 토큰 검증 시 사용자 정보를 반환한다")
-    void givenValidToken_whenValidateToken_thenReturnUserInfo() throws Exception {
-        // given
-        AuthResponse validationResponse = AuthResponse.builder()
-                .token(validJwtToken)
-                .userId(validUser.getId())
-                .username(validUser.getUsername())
-                .valid(true)
-                .expiresAt(new Date(System.currentTimeMillis() + 1800000))
-                .build();
-
-        when(authService.validateToken(validJwtToken)).thenReturn(validationResponse);
-
-        // when
-        ResultActions resultActions = mockMvc.perform(post("/api/auth/validate")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtToken)));
-
-        // then
-        resultActions.andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.userId").value(validUser.getId()))
-                .andExpect(jsonPath("$.username").value(validUser.getUsername()))
-                .andExpect(jsonPath("$.valid").value(true));
-
-        verify(authService, times(1)).validateToken(validJwtToken);
-    }
-
-    @Test
-    @DisplayName("만료된 토큰 검증 시 401 Unauthorized 응답을 반환한다")
-    void givenInvalidJwtToken_whenValidateToken_thenReturnUnauthorized() throws Exception {
-        // given
-        String invalidJwtToken = "invalid-token";
-        when(authService.validateToken(invalidJwtToken))
-            .thenThrow(new UnauthorizedException("유효하지 않은 세션입니다"));
-
-        // when
-        ResultActions resultActions = mockMvc.perform(post("/api/auth/validate")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", invalidJwtToken)));
-
-        // then
-        resultActions.andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.message").value("유효하지 않은 세션입니다"))
-                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
-
-        verify(authService, times(1)).validateToken(invalidJwtToken);
-    }
-
-    @Test
-    @DisplayName("Authorization 헤더에서 토큰 검증이 정상적으로 동작한다")
-    void givenValidTokenInHeader_whenValidateToken_thenReturnUserInfo() throws Exception {
-        // given
-        AuthResponse validationResponse = AuthResponse.builder()
-                .token(validJwtToken)
-                .userId(validUser.getId())
-                .username(validUser.getUsername())
-                .valid(true)
-                .expiresAt(new Date(System.currentTimeMillis() + 1800000))
-                .build();
-
-        when(authService.validateToken(validJwtToken)).thenReturn(validationResponse);
-
-        // when
-        ResultActions resultActions = mockMvc.perform(post("/api/auth/validate")
-                .header("Authorization", "Bearer " + validJwtToken));
-
-        // then
-        resultActions.andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.userId").value(validUser.getId()))
-                .andExpect(jsonPath("$.username").value(validUser.getUsername()))
-                .andExpect(jsonPath("$.valid").value(true));
-
-        verify(authService, times(1)).validateToken(validJwtToken);
     }
 
     @Test
@@ -306,13 +209,13 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("유효한 토큰으로 현재 사용자 정보를 조회한다")
-    void givenValidToken_whenGetCurrentUser_thenReturnUserInfo() throws Exception {
-        // given - 이미 setUp()에서 기본 설정됨
-
+    @DisplayName("필터에서 인증된 사용자 ID로 현재 사용자 정보를 조회한다")
+    void givenAuthenticatedUser_whenGetCurrentUser_thenReturnUserInfo() throws Exception {
+        // given - 필터에서 설정한 userId 시뮬레이션
+        
         // when
         ResultActions resultActions = mockMvc.perform(get("/api/auth/me")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtToken)));
+                .requestAttr("userId", validUser.getId())); // 필터에서 설정한 userId 시뮬레이션
 
         // then
         resultActions.andExpect(status().isOk())
@@ -320,67 +223,42 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.id").value(validUser.getId()))
                 .andExpect(jsonPath("$.username").value(validUser.getUsername()));
 
-        verify(authService, times(1)).isValidToken(validJwtToken);
-        verify(authService, times(1)).getUserByToken(validJwtToken);
+        verify(authService, times(1)).getUserById(validUser.getId());
     }
 
     @Test
-    @DisplayName("토큰이 유효하지 않을 때 현재 사용자 조회 실패")
-    void givenInvalidJwtToken_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
-        // given
-        String invalidJwtToken = "invalid-token";
-        when(authService.isValidToken(invalidJwtToken)).thenReturn(false);
-
-        // when
-        ResultActions resultActions = mockMvc.perform(get("/api/auth/me")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", invalidJwtToken)));
-
-        // then
-        resultActions.andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.status").value(401));
-
-        verify(authService, never()).getUserByToken(any());
-    }
-
-    @Test
-    @DisplayName("토큰 없이 현재 사용자 정보 조회 시 401 응답을 반환한다")
-    void givenNoToken_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
-        // when
+    @DisplayName("인증되지 않은 요청시 401 응답을 반환한다")
+    void givenUnauthenticatedRequest_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
+        // when - userId 속성 없이 요청
         ResultActions resultActions = mockMvc.perform(get("/api/auth/me"));
 
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("인증이 필요합니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("인증이 필요합니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
-        // 토큰이 없으므로 서비스 메소드는 호출되지 않아야 함
-        verify(authService, never()).isValidToken(any());
-        verify(authService, never()).getUserByToken(any());
+        verify(authService, never()).getUserById(any());
     }
 
     @Test
-    @DisplayName("토큰은 유효하지만 사용자를 찾을 수 없는 경우")
-    void givenValidTokenButNoUser_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
+    @DisplayName("존재하지 않는 사용자 ID로 요청 시 401 응답을 반환한다")
+    void givenNonExistentUserId_whenGetCurrentUser_thenReturnUnauthorized() throws Exception {
         // given
-        String validJwtTokenNoUser = "valid-jwt-token-no-user";
-
-        // JwtTokenProvider 설정 - 토큰을 무효한 것으로 처리
-        when(jwtTokenProvider.validateToken(validJwtTokenNoUser)).thenReturn(false);
+        Long nonExistentUserId = 999L;
+        when(authService.getUserById(nonExistentUserId))
+            .thenThrow(new UnauthorizedException("사용자를 찾을 수 없습니다"));
 
         // when
         ResultActions resultActions = mockMvc.perform(get("/api/auth/me")
-                .cookie(new jakarta.servlet.http.Cookie("SESSION_TOKEN", validJwtTokenNoUser)));
+                .requestAttr("userId", nonExistentUserId));
 
         // then
         resultActions.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("유효하지 않은 토큰입니다"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다"))
+                .andExpect(jsonPath("$.status").value("UNAUTHORIZED"));
 
-        verify(jwtTokenProvider, times(1)).validateToken(validJwtTokenNoUser);
-        verify(authService, never()).isValidToken(any());
-        verify(authService, never()).getUserByToken(any());
+        verify(authService, times(1)).getUserById(nonExistentUserId);
     }
 }
