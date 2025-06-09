@@ -124,7 +124,10 @@ services:
       # CORS Configuration
       FRONTEND_URL: http://localhost:3000
 
-      # JVM 설정
+      # JWT Configuration
+      JWT_SECRET: "test-jwt-secret-key-for-chatapp-development-32-characters-minimum-length"
+
+      # JVM 설정 (JFR 및 JMX 활성화)
       JAVA_OPTS: >
         -server
         -XX:+UseContainerSupport

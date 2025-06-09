@@ -2,11 +2,11 @@
 spring:
   application:
     name: chat-app
-  
+
   # 프로파일 설정
   profiles:
     active: dev
-  
+
   # JPA 공통 설정
   jpa:
     properties:
@@ -26,5 +26,5 @@ chat:
 # JWT 설정
 app:
   jwt:
-    secret: ${JWT_SECRET:#{null}}  # 환경변수 필수
+    secret: ${JWT_SECRET}  # 필수 환경변수 (기본값 없음)
     expiration: ${JWT_EXPIRATION:1800000}  # 30분 (밀리초)

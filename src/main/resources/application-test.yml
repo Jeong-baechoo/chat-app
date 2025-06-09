@@ -42,3 +42,9 @@ chat:
   websocket:
     allowed-origins:
       - "*"
+
+# 테스트용 JWT 설정 (테스트 전용)
+app:
+  jwt:
+    secret: TEST_ONLY_JWT_SECRET_FOR_UNIT_TESTS_32_CHARS_MIN
+    expiration: 60000  # 1분 (테스트용 짧은 만료시간)

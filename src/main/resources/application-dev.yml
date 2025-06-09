@@ -1,7 +1,7 @@
 # 개발 환경 설정
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:p6spy:mysql://127.0.0.1:3306/chatapp?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&useServerPrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048}
+    url: ${SPRING_DATASOURCE_URL:jdbc:p6spy:mysql://127.0.0.1:3307/chatapp?serverTimezone=UTC&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&cachePrepStmts=true&useServerPrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048}
     username: ${DB_USERNAME:chatapp}
     password: ${DB_PASSWORD:chatapp123}
     driver-class-name: com.p6spy.engine.spy.P6SpyDriver
@@ -102,3 +102,9 @@ chat:
     allowed-origins:
       - http://localhost:3000
       - http://localhost:8080
+
+# 개발용 JWT 설정 (안전한 기본값)
+app:
+  jwt:
+    secret: ${JWT_SECRET:DEVELOPMENT_ONLY_SECRET_DO_NOT_USE_IN_PRODUCTION_abcdef123456789}
+    expiration: ${JWT_EXPIRATION:1800000}

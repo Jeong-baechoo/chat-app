@@ -43,6 +43,14 @@ portfolio-docs/
 src/main/java/com/example/chatapp/performance/
 app.log
 
+### k6 testscript ###
+k6/
+
 ### Logs ###
 logs/
 *.log
+
+### Environment Variables ###
+.env
+.env.local
+.env.prod
