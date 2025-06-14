@@ -1,7 +1,9 @@
 package com.example.chatapp.service.unit.user;
 
 import com.example.chatapp.domain.User;
+import com.example.chatapp.domain.service.UserDomainService;
 import com.example.chatapp.dto.response.UserResponse;
+import com.example.chatapp.infrastructure.auth.PasswordEncoder;
 import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.impl.UserServiceImpl;
@@ -31,12 +33,18 @@ class UserServiceTest {
 
     @Mock
     private UserMapper userMapper;
+    
+    @Mock
+    private UserDomainService userDomainService;
+    
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     private UserServiceImpl userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserServiceImpl(userRepository, userMapper, null);
+        userService = new UserServiceImpl(userRepository, userMapper, userDomainService, passwordEncoder);
     }
 
     @Test

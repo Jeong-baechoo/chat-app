@@ -19,6 +19,7 @@ public class User {
     private String username;
 
     @Column(nullable = false, length = 255)
+
     private String password;
 
     @Column(name = "created_at")
@@ -41,7 +42,7 @@ public class User {
     }
 
     /**
-     * 비밀번호 변경 (이미 검증되고 암호화된 비밀번호로)
+     * 비밀번호 변경 (이미 검증되고 암호화된 비밀번호로) - 도메인 서비스에서만 사용
      */
     public void changePassword(String newEncodedPassword) {
         validatePassword(newEncodedPassword);
@@ -56,7 +57,7 @@ public class User {
     }
 
     /**
-     * 사용자명 변경
+     * 사용자명 변경 - 도메인 서비스에서만 사용
      */
     public void changeUsername(String newUsername) {
         validateUsername(newUsername);
@@ -102,7 +103,7 @@ public class User {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        
+
         // username은 unique이므로 비즈니스 키로 사용
         return Objects.equals(username, user.username);
     }

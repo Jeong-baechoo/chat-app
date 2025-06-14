@@ -12,4 +12,7 @@ public interface UserService {
     void deleteUser(Long id);
 
     List<UserResponse> findLoggedInUsers();
+    
+    void changePassword(Long userId, String currentPassword, String newPassword);
+    void changeUsername(Long userId, String newUsername);
 }
