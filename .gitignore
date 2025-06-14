@@ -36,8 +36,6 @@ out/
 ### VS Code ###
 .vscode/
 
-### Portfolio Documentation ###
-portfolio-docs/
 
 ### Performance Testing ###
 src/main/java/com/example/chatapp/performance/
