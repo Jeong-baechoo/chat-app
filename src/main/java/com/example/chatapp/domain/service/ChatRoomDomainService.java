@@ -14,13 +14,6 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ChatRoomDomainService {
 
-    /**
-     * 새로운 채팅방 생성
-     */
-    public ChatRoom createChatRoom(String name, ChatRoomType type, User creator) {
-        Objects.requireNonNull(creator, "채팅방 생성자는 필수입니다");
-        return ChatRoom.create(name, type, creator);
-    }
 
     /**
      * 채팅방에 사용자 초대 (관리자만 가능)

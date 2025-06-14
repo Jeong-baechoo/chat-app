@@ -1,7 +1,6 @@
 package com.example.chatapp.controller;
 
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
-import com.example.chatapp.dto.request.ChatRoomJoinRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.infrastructure.auth.AuthContext;
@@ -92,7 +91,18 @@ public class ChatRoomController {
     }
 
     /**
-     * 채팅방 삭제
+     * 채팅방 탈퇴 (참여자 목록에서 완전히 제거)
+     */
+    @PostMapping("/{id}/leave")
+    public ResponseEntity<Void> leaveChatRoom(@PathVariable Long id) {
+        Long userId = authContext.getCurrentUserId();
+        log.debug("채팅방 탈퇴 API 요청: roomId={}, userId={}", id, userId);
+        chatRoomService.removeParticipantFromChatRoom(id, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 채팅방 삭제 (관리자 권한 필요)
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRoom(@PathVariable Long id) {

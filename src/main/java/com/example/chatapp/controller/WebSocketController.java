@@ -62,21 +62,22 @@ public class WebSocketController {
     }
 
     /**
-     * 채팅방 퇴장
+     * 채팅방 연결 해제 (WebSocket 세션에서만 제거, 참여자 목록은 유지)
+     * - 브라우저 탭 전환, 일시적 연결 끊김 등에 사용
+     * - 채팅방 참여자 목록에서는 제거되지 않음
      */
-    @MessageMapping("/room.leave")
-    public void leaveRoom(@Payload @Valid RoomLeaveRequest request, SimpMessageHeaderAccessor headerAccessor) {
+    @MessageMapping("/room.disconnect")
+    public void disconnectFromRoom(@Payload @Valid RoomLeaveRequest request, SimpMessageHeaderAccessor headerAccessor) {
         // WebSocket 세션에서 인증된 사용자 ID 추출
         Long userId = getUserIdFromSession(headerAccessor);
         Long roomId = request.getRoomId();
 
-        // 채팅방에서 참가자 제거 (실제 비즈니스 로직)
-        chatRoomService.removeParticipantFromChatRoom(roomId, userId);
-
-        // 현재 채팅방에서만 퇴장 (userId는 보존, roomId만 제거)
+        // 세션에서만 채팅방 정보 제거 (참여자 목록은 유지)
         removeCurrentRoomFromSession(headerAccessor);
 
-        log.info("사용자 채팅방 퇴장 완료: userId={}, roomId={}", userId, roomId);
+        log.info("사용자 채팅방 연결 해제: userId={}, roomId={}", userId, roomId);
+        
+        // TODO: 다른 사용자들에게 임시 오프라인 상태 알림
     }
 
     /**

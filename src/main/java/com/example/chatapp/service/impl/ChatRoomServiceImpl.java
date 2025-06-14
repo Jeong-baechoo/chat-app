@@ -5,24 +5,17 @@ import com.example.chatapp.domain.service.ChatRoomDomainService;
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
-import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.ChatRoomException;
-import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
-import com.example.chatapp.infrastructure.message.ChatEvent;
 import com.example.chatapp.mapper.ChatRoomMapper;
-import com.example.chatapp.mapper.UserMapper;
-import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.service.ChatRoomService;
 import com.example.chatapp.service.EntityFinderService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -33,26 +26,24 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomParticipantRepository participantRepo;
     private final ChatRoomMapper chatRoomMapper;
-    private final UserMapper userMapper;
     private final ChatEventPublisherService chatEventPublisherService;
     private final EntityFinderService entityFinderService;
     private final ChatRoomDomainService chatRoomDomainService;
 
     @Override
     @Transactional
-    public ChatRoomResponse createChatRoom(@Valid ChatRoomCreateRequest request) {
+    public ChatRoomResponse createChatRoom(ChatRoomCreateRequest request) {
         // 먼저 사용자 존재 여부 확인
         User creator = findUserById(request.getCreatorId());
 
-        // 도메인 서비스를 통한 채팅방 생성
-        ChatRoom chatRoom = chatRoomDomainService.createChatRoom(
-                request.getName(), 
-                request.getType(), 
+        // 채팅방 생성 (도메인 엔티티의 정적 팩토리 메서드 사용)
+        ChatRoom chatRoom = ChatRoom.create(
+                request.getName(),
+                request.getType(),
                 creator
         );
-        
+
         ChatRoom savedChatRoom = chatRoomRepository.save(chatRoom);
 
         // 이벤트 발행 로직을 별도 서비스로 위임
@@ -98,7 +89,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         if (!chatRoom.isParticipantById(userId)) {
             // 도메인 서비스를 통한 자유 참여
             chatRoomDomainService.joinChatRoom(chatRoom, user);
-            
+
             // 이벤트 발행 로직을 별도 서비스로 위임
             chatEventPublisherService.publishUserJoinEvent(chatRoomId, user);
         }
@@ -110,7 +101,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Transactional
     public void deleteChatRoom(Long chatRoomId, Long userId) {
         ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
-        
+
         // 도메인에서 권한 검증
         chatRoom.validateCanDelete(userId);
 
