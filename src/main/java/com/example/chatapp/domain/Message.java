@@ -1,16 +1,16 @@
 package com.example.chatapp.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "messages",
         indexes = {
                 @Index(name = "idx_chatroom_timestamp", columnList = "chat_room_id,timestamp"),
@@ -44,6 +44,52 @@ public class Message {
     @Column(nullable = false)
     private MessageStatus status;
 
+    // 생성자
+    private Message(String content, User sender, ChatRoom chatRoom) {
+        validateContent(content);
+        validateSender(sender);
+        validateChatRoom(chatRoom);
+        
+        this.content = content;
+        this.sender = sender;
+        this.chatRoom = chatRoom;
+        this.timestamp = LocalDateTime.now();
+        this.status = MessageStatus.SENT;
+    }
+
+    /**
+     * 새로운 메시지 생성 (도메인 서비스에서 권한 검증 후 호출)
+     */
+    public static Message create(String content, User sender, ChatRoom chatRoom) {
+        // 채팅방 참여자인지 검증
+        if (!chatRoom.isParticipantById(sender.getId())) {
+            throw new IllegalStateException("채팅방 참여자만 메시지를 보낼 수 있습니다");
+        }
+        return new Message(content, sender, chatRoom);
+    }
+
+    // 검증 메서드
+    private static void validateContent(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("메시지 내용은 필수입니다");
+        }
+        if (content.length() > 1000) {
+            throw new IllegalArgumentException("메시지는 1000자를 초과할 수 없습니다");
+        }
+    }
+
+    private static void validateSender(User sender) {
+        if (sender == null) {
+            throw new IllegalArgumentException("메시지 발신자는 필수입니다");
+        }
+    }
+
+    private static void validateChatRoom(ChatRoom chatRoom) {
+        if (chatRoom == null) {
+            throw new IllegalArgumentException("채팅방은 필수입니다");
+        }
+    }
+
     /**
      * 메시지 상태 변경
      */
@@ -54,8 +100,12 @@ public class Message {
 
     @PrePersist
     protected void onCreate() {
-        this.timestamp = LocalDateTime.now();
-        this.status = MessageStatus.SENT;
+        if (this.timestamp == null) {
+            this.timestamp = LocalDateTime.now();
+        }
+        if (this.status == null) {
+            this.status = MessageStatus.SENT;
+        }
     }
 
     private void validateStatusChange(MessageStatus newStatus) {

@@ -128,6 +128,68 @@ public class ChatRoom {
                 .anyMatch(p -> p.getUser().equals(user));
     }
 
+    /**
+     * 사용자의 ID로 참여자 확인
+     */
+    public boolean isParticipantById(Long userId) {
+        return participants.stream()
+                .anyMatch(p -> p.getUser().getId().equals(userId));
+    }
+
+    /**
+     * 사용자의 ID로 관리자 권한 확인
+     */
+    public boolean isAdminById(Long userId) {
+        return participants.stream()
+                .anyMatch(p -> p.getUser().getId().equals(userId) && p.getRole() == ParticipantRole.ADMIN);
+    }
+
+    /**
+     * 사용자가 채팅방을 삭제할 수 있는지 확인
+     */
+    public void validateCanDelete(Long userId) {
+        if (!isAdminById(userId)) {
+            throw new IllegalStateException("채팅방을 삭제할 권한이 없습니다. 관리자만 삭제할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 사용자가 메시지를 보낼 수 있는지 확인
+     */
+    public void validateCanSendMessage(Long userId) {
+        if (!isParticipantById(userId)) {
+            throw new IllegalStateException("채팅방 참여자만 메시지를 보낼 수 있습니다.");
+        }
+    }
+
+    /**
+     * 사용자가 참여자 초대를 할 수 있는지 확인
+     */
+    public void validateCanInvite(Long userId) {
+        if (!isAdminById(userId)) {
+            throw new IllegalStateException("채팅방에 참여자를 초대할 권한이 없습니다. 관리자만 초대할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 사용자가 참여자를 추방할 수 있는지 확인
+     */
+    public void validateCanRemoveParticipant(Long userId) {
+        if (!isAdminById(userId)) {
+            throw new IllegalStateException("참여자를 추방할 권한이 없습니다. 관리자만 추방할 수 있습니다.");
+        }
+    }
+
+    /**
+     * ID로 참여자 찾기
+     */
+    public ChatRoomParticipant findParticipantById(Long userId) {
+        return participants.stream()
+                .filter(p -> p.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다. userId: " + userId));
+    }
+
     // 내부 유틸리티 메서드들 (package-private)
 
     private ChatRoomParticipant findParticipant(User user) {

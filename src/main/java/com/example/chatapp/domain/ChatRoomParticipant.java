@@ -75,9 +75,9 @@ public class ChatRoomParticipant {
     }
 
     /**
-     * ChatRoom 설정 (연관관계 편의 메서드)
+     * ChatRoom 설정 (연관관계 편의 메서드) - 패키지 내부에서만 사용
      */
-    public void setChatRoom(ChatRoom chatRoom) {
+    void setChatRoom(ChatRoom chatRoom) {
         this.chatRoom = chatRoom;
     }
 
