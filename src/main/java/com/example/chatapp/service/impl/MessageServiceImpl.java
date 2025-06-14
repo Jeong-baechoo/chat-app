@@ -7,11 +7,9 @@ import com.example.chatapp.dto.response.MessageResponse;
 import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.MessageMapper;
-import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.service.EntityFinderService;
 import com.example.chatapp.service.MessageService;
-import com.example.chatapp.service.MessageValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,10 +31,8 @@ import java.util.List;
 public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final MessageDomainService messageDomainService;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final MessageMapper messageMapper;
     private final EntityFinderService entityFinder;
-    private final MessageValidator validator;
     private final ChatEventPublisherService eventPublisher;
 
     /**
@@ -50,16 +46,12 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public void sendMessage(MessageCreateRequest request, Long senderId) {
-        // 메시지 요청 검증
-        validator.validateMessageRequest(request);
+        // 엔티티 조회
+        User sender = entityFinder.findUserById(senderId);
+        ChatRoom chatRoom = entityFinder.findChatRoomById(request.getChatRoomId());
 
-        // 메시지 전송 권한 확인 (채팅방 참여자인지)
-        ChatRoomParticipant participant = validateAndGetParticipant(senderId, request.getChatRoomId());
-        User sender = participant.getUser();
-        ChatRoom chatRoom = participant.getChatRoom();
-
-        // 도메인 서비스를 통해 메시지 생성
-        Message message = messageDomainService.createMessage(request.getContent(), sender, chatRoom);
+        // 메시지 생성 (도메인에서 참여자 검증 수행)
+        Message message = Message.create(request.getContent(), sender, chatRoom);
         Message savedMessage = messageRepository.save(message);
 
         // 이벤트 발행 로직을 별도 서비스로 위임
@@ -137,9 +129,9 @@ public class MessageServiceImpl implements MessageService {
             throw new MessageException("메시지 상태를 변경할 권한이 없습니다");
         }
 
-        // 도메인 서비스를 통한 상태 업데이트
-        Message updatedMessage = messageDomainService.updateMessageStatus(message, status);
-        Message savedMessage = messageRepository.save(updatedMessage);
+        // 메시지 상태 업데이트
+        message.updateStatus(status);
+        Message savedMessage = messageRepository.save(message);
 
         log.debug("메시지 상태 업데이트 완료: id={}, status={}", messageId, status);
 
@@ -180,15 +172,4 @@ public class MessageServiceImpl implements MessageService {
         log.debug("메시지 삭제 완료: id={}", id);
     }
 
-    // 내부 헬퍼 메소드
-
-    /**
-     * 사용자가 채팅방의 참여자인지 확인하고 참여자 정보 반환
-     * 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
-     */
-private ChatRoomParticipant validateAndGetParticipant(Long userId, Long chatRoomId) {
-        return chatRoomParticipantRepository
-                .findByUserIdAndChatRoomIdWithUserAndChatRoom(userId, chatRoomId)
-                .orElseThrow(() -> new MessageException("채팅방 참여자만 메시지를 보낼 수 있습니다"));
-    }
 }

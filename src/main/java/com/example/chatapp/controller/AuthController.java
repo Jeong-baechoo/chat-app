@@ -7,6 +7,7 @@ import com.example.chatapp.dto.response.AuthResponse;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
+import com.example.chatapp.service.EntityFinderService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final EntityFinderService entityFinderService;
     private static final String JWT_COOKIE_NAME = "JWT_TOKEN";
     private static final int COOKIE_MAX_AGE = 30 * 60; // 30분
 
@@ -93,7 +95,7 @@ public class AuthController {
                 throw new UnauthorizedException("인증이 필요합니다");
             }
 
-            User user = authService.getUserById(userId);
+            User user = entityFinderService.findUserById(userId);
 
             UserResponse response = UserResponse.builder()
                     .id(user.getId())

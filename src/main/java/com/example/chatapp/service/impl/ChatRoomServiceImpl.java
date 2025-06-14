@@ -94,8 +94,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
         User user = findUserById(userId);
 
-        // 이미 참여한 사용자인지 확인
-        if (!participantRepo.existsByUserIdAndChatRoomId(userId, chatRoomId)) {
+        // 이미 참여한 사용자인지 도메인에서 확인
+        if (!chatRoom.isParticipantById(userId)) {
             // 도메인 서비스를 통한 자유 참여
             chatRoomDomainService.joinChatRoom(chatRoom, user);
             
@@ -110,7 +110,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Transactional
     public void deleteChatRoom(Long chatRoomId, Long userId) {
         ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
-        validateUserIsRoomAdmin(userId, chatRoomId);
+        
+        // 도메인에서 권한 검증
+        chatRoom.validateCanDelete(userId);
 
         chatRoomRepository.delete(chatRoom);
         log.debug("채팅방 삭제 완료: id={}", chatRoomId);
@@ -124,28 +126,26 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
         User user = findUserById(userId);
 
-        // 참가자로 등록되어 있는지 확인
-        if (!participantRepo.existsByUserIdAndChatRoomId(userId, chatRoomId)) {
+        // 참가자로 등록되어 있는지 도메인에서 확인
+        if (!chatRoom.isParticipantById(userId)) {
             throw new ChatRoomException("해당 채팅방의 참가자가 아닙니다.");
         }
 
-        // 채팅방에서 참가자 제거
-        participantRepo.deleteByUserIdAndChatRoomId(userId, chatRoomId);
-        ChatRoom updatedChatRoom = findChatRoomByIdOrThrow(chatRoomId);
+        // 도메인 서비스를 통한 참가자 제거
+        chatRoomDomainService.leaveRoom(chatRoom, user);
 
         // 사용자 퇴장 이벤트 발행
         chatEventPublisherService.publishUserLeaveEvent(chatRoomId, user);
 
         log.info("사용자가 채팅방에서 퇴장했습니다: userId={}, chatRoomId={}", userId, chatRoomId);
-        return chatRoomMapper.toResponse(updatedChatRoom);
+        return chatRoomMapper.toResponse(chatRoom);
     }
 
     // 내부 헬퍼 메소드
 
 
     private ChatRoom findChatRoomByIdOrThrow(Long chatRoomId) {
-        return chatRoomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new ChatRoomException("채팅방을 찾을 수 없습니다"));
+        return entityFinderService.findChatRoomById(chatRoomId);
     }
 
     private User findUserById(Long userId) {
@@ -156,15 +156,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         entityFinderService.validateUserExists(userId);
     }
 
-    private void validateUserIsRoomAdmin(Long userId, Long chatRoomId) {
-        boolean isAdmin = participantRepo.findByUserIdAndChatRoomId(userId, chatRoomId)
-                .map(participant -> participant.getRole() == ParticipantRole.ADMIN)
-                .orElse(false);
-
-        if (!isAdmin) {
-            throw new ChatRoomException("채팅방을 삭제할 권한이 없습니다.");
-        }
-    }
 
     private List<ChatRoomResponse> mapChatRoomsToResponses(List<ChatRoom> rooms) {
         // 적은 양의 데이터를 처리할 때는 스트림 대신 반복문 사용

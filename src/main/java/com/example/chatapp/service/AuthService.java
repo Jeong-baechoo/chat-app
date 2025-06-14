@@ -93,14 +93,4 @@ public class AuthService {
      * @param token JWT 토큰
      * @return 사용자 객체 또는 null (토큰이 유효하지 않은 경우)
      */
-    /**
-     * 사용자 ID로 사용자 조회
-     * @param userId 사용자 ID
-     * @return 사용자 객체
-     * @throws UnauthorizedException 사용자를 찾을 수 없는 경우
-     */
-    public User getUserById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
-    }
 }
