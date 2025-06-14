@@ -29,12 +29,6 @@ public class MessageMapper {
     }
 
     public Message toEntity(MessageCreateRequest request, User sender, ChatRoom chatRoom) {
-        return Message.builder()
-                .content(request.getContent())
-                .sender(sender)
-                .chatRoom(chatRoom)
-                .status(MessageStatus.SENT)
-                .timestamp(LocalDateTime.now())
-                .build();
+        return Message.create(request.getContent(), sender, chatRoom);
     }
 }
