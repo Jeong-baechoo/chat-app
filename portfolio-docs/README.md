@@ -38,12 +38,12 @@
 - **성능 개선**: 쿼리 수 90% 감소, 코드 중복 80% 제거
 - **완료 일자**: 2025-06-07
 
-### 6. [도메인 중심 설계 (DDD) 적용](./06-domain-driven-design/README.md) 🆕
+### 6. [도메인 중심 설계 (DDD) 적용](./06-domain-driven-design.md) 🆕
 - **기술 스택**: Java, Spring Boot, Domain-Driven Design, Clean Architecture
-- **문제 해결**: 도메인 계층 불변성 확보, 의존성 방향 올바른 설정
-- **핵심 기술**: 불변 객체, 정적 팩토리 메서드, 의존성 역전 원칙
-- **아키텍처 개선**: Clean Architecture 원칙 준수, 도메인 순수성 확보
-- **완료 일자**: 2025-06-07
+- **문제 해결**: 도메인 계층 불변성 확보, 의존성 방향 올바른 설정, 비즈니스 로직 도메인 이동
+- **핵심 기술**: 불변 객체, 정적 팩토리 메서드, 의존성 역전 원칙, 풍부한 도메인 모델
+- **아키텍처 개선**: Clean Architecture 원칙 준수, 도메인 순수성 확보, 응용 서비스 단순화
+- **완료 일자**: 2025-06-07, 추가 개선: 2025-06-14
 
 ## 📊 전체 성과 요약
 
@@ -54,6 +54,7 @@
 4. **성능 최적화**: 데이터베이스 쿼리 최적화로 대폭적인 성능 향상
 5. **코드 품질**: 중복 제거 및 리팩토링으로 유지보수성 향상
 6. **아키텍처 개선**: DDD와 Clean Architecture 적용으로 도메인 순수성 확보
+7. **비즈니스 로직 캡슐화**: 응용 서비스의 비즈니스 로직을 도메인으로 이동하여 풍부한 도메인 모델 구현
 
 ### 사용된 핵심 기술
 - **Backend**: Spring Boot, JPA/Hibernate, MySQL
@@ -62,7 +63,7 @@
 - **Architecture**: Builder Pattern, DTO Pattern, Repository Pattern, EntityFinderService Pattern, DDD, Clean Architecture
 - **DevOps**: Spring Profiles, Environment Configuration
 - **Refactoring**: Stream API, Collections Framework, Design Patterns
-- **Domain Design**: 불변 객체, 정적 팩토리 메서드, 의존성 역전 원칙
+- **Domain Design**: 불변 객체, 정적 팩토리 메서드, 의존성 역전 원칙, 풍부한 도메인 모델
 
 ### 성능 개선 지표
 - **데이터베이스 응답 시간**: 61% 개선
@@ -79,6 +80,7 @@
 5. **성능 모니터링**: p6spy 활용한 SQL 성능 측정
 6. **코드 리팩토링**: 중복 제거, 디자인 패턴 적용, 성능 최적화
 7. **도메인 설계**: DDD 원칙 적용, Clean Architecture 구현, 불변성 확보
+8. **도메인 모델 진화**: 비즈니스 로직의 도메인 이동, 응용 서비스 단순화
 
 ## 📈 향후 계획
 

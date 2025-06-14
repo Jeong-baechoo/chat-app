@@ -12,7 +12,6 @@ import com.example.chatapp.mapper.MessageMapper;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.MessageRepository;
 import com.example.chatapp.service.EntityFinderService;
-import com.example.chatapp.service.MessageValidator;
 import com.example.chatapp.service.impl.MessageServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,8 +64,6 @@ class MessageServiceTest {
     @Mock
     private EntityFinderService entityFinder;
 
-    @Mock
-    private MessageValidator validator;
 
     @Mock
     private ChatEventPublisherService eventPublisher;
