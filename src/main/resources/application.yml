@@ -28,3 +28,15 @@ app:
   jwt:
     secret: ${JWT_SECRET}  # 필수 환경변수 (기본값 없음)
     expiration: ${JWT_EXPIRATION:1800000}  # 30분 (밀리초)
+
+# SpringDoc OpenAPI 설정
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: alpha
+    tags-sorter: alpha
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
