@@ -1,6 +1,5 @@
 package com.example.chatapp.service;
 
-import com.example.chatapp.constants.ErrorMessages;
 import com.example.chatapp.domain.ChatRoom;
 import com.example.chatapp.domain.Message;
 import com.example.chatapp.domain.User;
