@@ -33,7 +33,7 @@ public class EntityFinderService {
      */
     public User findUserById(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new UserException(ErrorMessages.USER_NOT_FOUND + ": " + userId));
+                .orElseThrow(() -> UserException.notFound(userId));
     }
 
     /**
@@ -45,7 +45,7 @@ public class EntityFinderService {
      */
     public ChatRoom findChatRoomById(Long chatRoomId) {
         return chatRoomRepository.findById(chatRoomId)
-                .orElseThrow(() -> new ChatRoomException(ErrorMessages.CHATROOM_NOT_FOUND + ": " + chatRoomId));
+                .orElseThrow(() -> ChatRoomException.notFound(chatRoomId));
     }
 
     /**
@@ -57,7 +57,7 @@ public class EntityFinderService {
      */
     public Message findMessageById(Long messageId) {
         return messageRepository.findById(messageId)
-                .orElseThrow(() -> new MessageException(ErrorMessages.MESSAGE_NOT_FOUND + ": " + messageId));
+                .orElseThrow(() -> MessageException.notFound(messageId));
     }
 
     /**
@@ -68,7 +68,7 @@ public class EntityFinderService {
      */
     public void validateChatRoomExists(Long chatRoomId) {
          if (!chatRoomRepository.existsById(chatRoomId)) {
-            throw new ChatRoomException(ErrorMessages.CHATROOM_NOT_FOUND + ": " + chatRoomId);
+            throw ChatRoomException.notFound(chatRoomId);
         }
     }
 
@@ -80,7 +80,7 @@ public class EntityFinderService {
      */
     public void validateUserExists(Long userId) {
         if (!userRepository.existsById(userId)) {
-            throw new UserException(ErrorMessages.USER_NOT_FOUND + ": " + userId);
+            throw UserException.notFound(userId);
         }
     }
 }

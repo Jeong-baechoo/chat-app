@@ -4,6 +4,7 @@ import com.example.chatapp.domain.User;
 import com.example.chatapp.domain.service.UserDomainService;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UserException;
+import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.infrastructure.auth.PasswordEncoder;
 import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.UserRepository;
@@ -55,7 +56,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new UserException("사용자(ID: " + id + ")를 찾을 수 없습니다.");
+            throw UserException.notFound(id);
         }
 
         userRepository.deleteById(id);
@@ -77,7 +78,7 @@ public class UserServiceImpl implements UserService {
         
         // 현재 비밀번호 검증
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new UserException("현재 비밀번호가 일치하지 않습니다");
+            throw UnauthorizedException.invalidCredentials();
         }
         
         // 새 비밀번호 인코딩
@@ -96,7 +97,7 @@ public class UserServiceImpl implements UserService {
         
         // 새로운 사용자명이 이미 존재하는지 확인
         if (userRepository.existsByUsername(newUsername)) {
-            throw new UserException("이미 사용 중인 사용자명입니다: " + newUsername);
+            throw UserException.alreadyExists(newUsername);
         }
         
         userDomainService.changeUsername(user, newUsername);

@@ -119,7 +119,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         // 참가자로 등록되어 있는지 도메인에서 확인
         if (!chatRoom.isParticipantById(userId)) {
-            throw new ChatRoomException("해당 채팅방의 참가자가 아닙니다.");
+            throw ChatRoomException.notParticipant();
         }
 
         // 도메인 서비스를 통한 참가자 제거

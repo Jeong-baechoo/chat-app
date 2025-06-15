@@ -1,5 +1,6 @@
 package com.example.chatapp.infrastructure.filter;
 
+import com.example.chatapp.dto.ErrorResponse;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -13,8 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
 
 /**
  * JWT 기반 인증을 처리하는 필터
@@ -84,13 +84,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * 인증 실패 처리를 일관된 형식으로 반환
      */
     private void handleAuthenticationFailure(HttpServletResponse response, String message) throws IOException {
-        log.warn("JWT 인증 실패");
+        log.warn("JWT 인증 실패: {}", message);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/json");
+        response.setContentType("application/json;charset=UTF-8");
 
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("error", message);
-        errorResponse.put("status", HttpServletResponse.SC_UNAUTHORIZED);
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .errorCode("AUTH_ERROR")
+                .status("UNAUTHORIZED")
+                .message(message)
+                .timestamp(LocalDateTime.now())
+                .build();
 
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
@@ -104,7 +107,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                path.startsWith("/api/auth/register") ||
                path.startsWith("/api/auth/logout") ||
                path.startsWith("/api/health") ||
-               path.startsWith("/socket");
+               path.startsWith("/socket") ||
+               path.startsWith("/api-docs") ||
+               path.startsWith("/swagger-ui") ||
+               path.equals("/swagger-ui.html") ||
+               path.startsWith("/v3/api-docs");
 
         if (isPublic) {
             log.debug("공개 경로 접근: {}", path);

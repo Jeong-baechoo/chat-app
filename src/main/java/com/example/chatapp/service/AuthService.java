@@ -30,10 +30,10 @@ public class AuthService {
      */
     public AuthResponse login(String username, String password) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UnauthorizedException("사용자명 또는 비밀번호가 일치하지 않습니다"));
+                .orElseThrow(() -> UnauthorizedException.invalidCredentials());
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new UnauthorizedException("사용자명 또는 비밀번호가 일치하지 않습니다");
+            throw UnauthorizedException.invalidCredentials();
         }
 
         return createAuthResponse(user);
@@ -49,7 +49,7 @@ public class AuthService {
     @Transactional
     public AuthResponse signup(String username, String password) {
         if (userRepository.findByUsername(username).isPresent()) {
-            throw new UserException("이미 사용 중인 사용자명입니다");
+            throw UserException.alreadyExists(username);
         }
 
         String encodedPassword = passwordEncoder.encode(password);

@@ -126,7 +126,7 @@ public class MessageServiceImpl implements MessageService {
 
         // 권한 확인
         if (!messageDomainService.canUserUpdateMessage(user, message)) {
-            throw new MessageException("메시지 상태를 변경할 권한이 없습니다");
+            throw MessageException.accessDenied();
         }
 
         // 메시지 상태 업데이트
