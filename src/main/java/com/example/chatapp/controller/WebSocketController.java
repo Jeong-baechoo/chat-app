@@ -8,6 +8,14 @@ import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.service.ChatRoomService;
 import com.example.chatapp.service.MessageService;
+import com.example.chatapp.dto.ErrorResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
@@ -24,6 +32,7 @@ import java.util.Map;
 @Controller
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "웹소켓", description = "실시간 메시징을 위한 웹소켓 엔드포인트")
 public class WebSocketController {
     private final MessageService messageService;
     private final ChatRoomService chatRoomService;
@@ -32,6 +41,15 @@ public class WebSocketController {
      * 메시지 전송
      */
     @MessageMapping("/message.send")
+    @Operation(summary = "메시지 전송", description = "웹소켓을 통해 채팅방에 메시지를 전송합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "메시지 전송 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 메시지 데이터",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "인증되지 않음 - 웹소켓으로 인증되지 않은 사용자",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @SecurityRequirement(name = "JWT 쿠키 인증")
     public void sendMessage(@Payload @Valid MessageCreateRequest request, SimpMessageHeaderAccessor headerAccessor) {
         Long senderId = getUserIdFromSession(headerAccessor);
 
@@ -47,6 +65,17 @@ public class WebSocketController {
      * 채팅방 입장
      */
     @MessageMapping("/room.enter")
+    @Operation(summary = "채팅방 입장", description = "웹소켓을 통해 채팅방에 입장하고 참여자로 참여합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "채팅방 입장 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "인증되지 않음 - 웹소켓으로 인증되지 않은 사용자",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "채팅방을 찾을 수 없음",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @SecurityRequirement(name = "JWT 쿠키 인증")
     public void enterRoom(@Payload @Valid RoomEnterRequest request, SimpMessageHeaderAccessor headerAccessor){
         // WebSocket 세션에서 인증된 사용자 ID 추출
         Long userId = getUserIdFromSession(headerAccessor);
@@ -67,6 +96,15 @@ public class WebSocketController {
      * - 채팅방 참여자 목록에서는 제거되지 않음
      */
     @MessageMapping("/room.disconnect")
+    @Operation(summary = "채팅방 연결 해제", description = "채팅방 웹소켓 세션에서 연결을 해제합니다 (참여자 목록에서는 제거되지 않음)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "채팅방 연결 해제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "인증되지 않음 - 웹소켓으로 인증되지 않은 사용자",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @SecurityRequirement(name = "JWT 쿠키 인증")
     public void disconnectFromRoom(@Payload @Valid RoomLeaveRequest request, SimpMessageHeaderAccessor headerAccessor) {
         // WebSocket 세션에서 인증된 사용자 ID 추출
         Long userId = getUserIdFromSession(headerAccessor);
@@ -85,6 +123,10 @@ public class WebSocketController {
      */
     @MessageExceptionHandler
     @SendToUser("/queue/errors")
+    @Operation(summary = "웹소켓 예외 처리", description = "웹소켓 작업 중 발생하는 예외를 처리합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "사용자 큐로 오류 메시지 전송")
+    })
     public Map<String, Object> handleException(Exception e) {
         Map<String, Object> errorMessage = createErrorMessage(e);
         log.error("WebSocket 오류: {}", e.getMessage(), e);

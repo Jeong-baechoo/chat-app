@@ -8,6 +8,16 @@ import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
 import com.example.chatapp.service.EntityFinderService;
+import com.example.chatapp.dto.ErrorResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +36,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "인증", description = "인증 관련 API")
 public class AuthController {
 
     private final AuthService authService;
@@ -41,6 +52,41 @@ public class AuthController {
      * @return JWT 토큰과 사용자 정보
      */
     @PostMapping("/login")
+    @Operation(summary = "로그인", description = "사용자 로그인 및 JWT 토큰 발급")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그인 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 - 입력값 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), 
+                    examples = @ExampleObject(
+                        value = """
+                        {
+                          "errorCode": "VALIDATION_ERROR",
+                          "status": "BAD_REQUEST",
+                          "message": "요청 데이터가 유효하지 않습니다",
+                          "timestamp": "2024-12-27T10:00:00",
+                          "fieldErrors": [
+                            {
+                              "field": "username",
+                              "rejectedValue": "ab",
+                              "message": "사용자명은 3-20자 사이여야 합니다"
+                            }
+                          ]
+                        }
+                        """
+                    ))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 - 사용자명 또는 비밀번호 불일치",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(
+                        value = """
+                        {
+                          "errorCode": "AUTH_ERROR",
+                          "status": "UNAUTHORIZED",
+                          "message": "사용자명 또는 비밀번호가 올바르지 않습니다",
+                          "timestamp": "2024-12-27T10:00:00"
+                        }
+                        """
+                    )))
+    })
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request, HttpServletResponse response) {
         AuthResponse authResponse = authService.login(request.getUsername(), request.getPassword());
         setJwtCookie(response, authResponse.getToken());
@@ -55,6 +101,41 @@ public class AuthController {
      * @return JWT 토큰과 생성된 사용자 정보
      */
     @PostMapping("/signup")
+    @Operation(summary = "회원가입", description = "새 사용자 등록 및 자동 로그인")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "회원가입 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 - 입력값 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(
+                        value = """
+                        {
+                          "errorCode": "VALIDATION_ERROR",
+                          "status": "BAD_REQUEST",
+                          "message": "요청 데이터가 유효하지 않습니다",
+                          "timestamp": "2024-12-27T10:00:00",
+                          "fieldErrors": [
+                            {
+                              "field": "password",
+                              "rejectedValue": "12345",
+                              "message": "비밀번호는 6자 이상이어야 합니다"
+                            }
+                          ]
+                        }
+                        """
+                    ))),
+            @ApiResponse(responseCode = "409", description = "이미 존재하는 사용자",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(
+                        value = """
+                        {
+                          "errorCode": "USER_CONFLICT",
+                          "status": "CONFLICT",
+                          "message": "사용자명 'testuser'는 이미 사용 중입니다",
+                          "timestamp": "2024-12-27T10:00:00"
+                        }
+                        """
+                    )))
+    })
     public ResponseEntity<AuthResponse> signup(@RequestBody @Valid SignupRequest request, HttpServletResponse response) {
         AuthResponse authResponse = authService.signup(request.getUsername(), request.getPassword());
         setJwtCookie(response, authResponse.getToken());
@@ -70,6 +151,11 @@ public class AuthController {
      * @return 로그아웃 결과
      */
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃", description = "JWT 쿠키 삭제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그아웃 성공")
+    })
+    @SecurityRequirement(name = "JWT 쿠키 인증")
     public ResponseEntity<?> logout(HttpServletResponse response) {
         // JWT 쿠키 삭제
         clearJwtCookie(response);
@@ -88,6 +174,23 @@ public class AuthController {
          * @return 현재 사용자 정보
          */
         @GetMapping("/me")
+        @Operation(summary = "현재 사용자 정보 조회", description = "인증된 사용자의 정보 조회")
+        @ApiResponses({
+                @ApiResponse(responseCode = "200", description = "조회 성공"),
+                @ApiResponse(responseCode = "401", description = "인증 필요",
+                        content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                        examples = @ExampleObject(
+                            value = """
+                            {
+                              "errorCode": "AUTH_ERROR",
+                              "status": "UNAUTHORIZED",
+                              "message": "인증이 필요합니다",
+                              "timestamp": "2024-12-27T10:00:00"
+                            }
+                            """
+                        )))
+        })
+        @SecurityRequirement(name = "JWT 쿠키 인증")
         public ResponseEntity<UserResponse> getCurrentUser (HttpServletRequest request){
             // 필터에서 설정한 사용자 ID 추출
             Long userId = (Long) request.getAttribute("userId");
