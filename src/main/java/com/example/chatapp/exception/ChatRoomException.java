@@ -38,4 +38,8 @@ public class ChatRoomException extends BaseException {
     public static ChatRoomException notParticipant() {
         return new ChatRoomException(ErrorCode.CHATROOM_NOT_PARTICIPANT);
     }
+    
+    public static ChatRoomException permissionDenied() {
+        return new ChatRoomException(ErrorCode.CHATROOM_PERMISSION_DENIED);
+    }
 }

@@ -7,7 +7,8 @@ import com.example.chatapp.dto.response.AuthResponse;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.service.AuthService;
-import com.example.chatapp.service.EntityFinderService;
+import com.example.chatapp.repository.UserRepository;
+import com.example.chatapp.exception.UserException;
 import com.example.chatapp.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,7 +41,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-    private final EntityFinderService entityFinderService;
+    private final UserRepository userRepository;
     private static final String JWT_COOKIE_NAME = "JWT_TOKEN";
     private static final int COOKIE_MAX_AGE = 30 * 60; // 30분
 
@@ -198,7 +199,8 @@ public class AuthController {
                 throw new UnauthorizedException("인증이 필요합니다");
             }
 
-            User user = entityFinderService.findUserById(userId);
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> UserException.notFound(userId));
 
             UserResponse response = UserResponse.builder()
                     .id(user.getId())

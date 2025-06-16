@@ -34,7 +34,6 @@
 ### 5. [코드 리팩토링 및 최적화](./05-code-refactoring-optimization/README.md)
 - **기술 스택**: Java, Spring Boot, Stream API, Design Patterns
 - **문제 해결**: 코드 중복 제거, 성능 최적화, 유지보수성 향상
-- **핵심 기술**: EntityFinderService 패턴, Batch 조회, 불변 객체 활용
 - **성능 개선**: 쿼리 수 90% 감소, 코드 중복 80% 제거
 - **완료 일자**: 2025-06-07
 

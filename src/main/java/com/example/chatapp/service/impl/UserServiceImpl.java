@@ -8,7 +8,6 @@ import com.example.chatapp.exception.UnauthorizedException;
 import com.example.chatapp.infrastructure.auth.PasswordEncoder;
 import com.example.chatapp.mapper.UserMapper;
 import com.example.chatapp.repository.UserRepository;
-import com.example.chatapp.service.EntityFinderService;
 import com.example.chatapp.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,6 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserDomainService userDomainService;
     private final PasswordEncoder passwordEncoder;
-    private final EntityFinderService entityFinderService;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,7 +39,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserResponse findUserById(Long id) {
-        User user = entityFinderService.findUserById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> UserException.notFound(id));
         return userMapper.toResponse(user);
     }
 
@@ -74,7 +73,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(Long userId, String currentPassword, String newPassword) {
-        User user = entityFinderService.findUserById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.notFound(userId));
         
         // 현재 비밀번호 검증
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
@@ -93,7 +93,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changeUsername(Long userId, String newUsername) {
-        User user = entityFinderService.findUserById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.notFound(userId));
         
         // 새로운 사용자명이 이미 존재하는지 확인
         if (userRepository.existsByUsername(newUsername)) {

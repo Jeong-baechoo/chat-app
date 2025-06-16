@@ -1,6 +1,7 @@
 package com.example.chatapp.controller;
 
 import com.example.chatapp.dto.request.ChatRoomCreateRequest;
+import com.example.chatapp.dto.request.InviteUserRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.dto.ErrorResponse;
@@ -216,6 +217,75 @@ public class ChatRoomController {
         Long userId = authContext.getCurrentUserId();
         log.debug("채팅방 참여 API 요청: roomId={}, userId={}", id, userId);
         ChatRoomResponse response = chatRoomService.addParticipantToChatRoom(id, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 사용자 초대
+     */
+    @PostMapping("/{id}/invite")
+    @Operation(summary = "사용자 초대", description = "채팅방 관리자가 다른 사용자를 초대합니다")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "사용자 초대 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    value = """
+                    {
+                      "errorCode": "VALIDATION_ERROR",
+                      "status": "BAD_REQUEST",
+                      "message": "이미 채팅방에 참여한 사용자입니다",
+                      "timestamp": "2024-12-27T10:00:00"
+                    }
+                    """
+                ))),
+        @ApiResponse(responseCode = "401", description = "인증 실패",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    value = """
+                    {
+                      "errorCode": "AUTH_ERROR",
+                      "status": "UNAUTHORIZED",
+                      "message": "인증이 필요합니다",
+                      "timestamp": "2024-12-27T10:00:00"
+                    }
+                    """
+                ))),
+        @ApiResponse(responseCode = "403", description = "권한 없음 - 관리자만 초대 가능",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    value = """
+                    {
+                      "errorCode": "CHATROOM_PERMISSION_DENIED",
+                      "status": "FORBIDDEN",
+                      "message": "채팅방 초대 권한이 없습니다",
+                      "timestamp": "2024-12-27T10:00:00"
+                    }
+                    """
+                ))),
+        @ApiResponse(responseCode = "404", description = "채팅방 또는 사용자를 찾을 수 없음",
+                content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(
+                    value = """
+                    {
+                      "errorCode": "CHATROOM_NOT_FOUND",
+                      "status": "NOT_FOUND",
+                      "message": "채팅방을 찾을 수 없습니다",
+                      "timestamp": "2024-12-27T10:00:00"
+                    }
+                    """
+                )))
+    })
+    @SecurityRequirement(name = "JWT 쿠키 인증")
+    public ResponseEntity<ChatRoomResponse> inviteUser(
+            @PathVariable Long id, 
+            @Valid @RequestBody InviteUserRequest request) {
+        Long inviterId = authContext.getCurrentUserId();
+        log.debug("사용자 초대 API 요청: roomId={}, inviterId={}, userToInviteId={}", 
+                id, inviterId, request.getUserToInviteId());
+        
+        ChatRoomResponse response = chatRoomService.inviteUserToChatRoom(
+                id, request.getUserToInviteId(), inviterId);
         return ResponseEntity.ok(response);
     }
 

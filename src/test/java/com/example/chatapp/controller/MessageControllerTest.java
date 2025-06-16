@@ -8,7 +8,6 @@ import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.infrastructure.auth.AuthContext;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
-import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
 import com.example.chatapp.service.MessageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -37,7 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = {MessageController.class}, 
+@WebMvcTest(controllers = {MessageController.class},
     includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
 @AutoConfigureMockMvc(addFilters = false)
 public class MessageControllerTest {

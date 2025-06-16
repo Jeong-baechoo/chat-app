@@ -61,6 +61,11 @@ public class Message {
      * 새로운 메시지 생성 (도메인 서비스에서 권한 검증 후 호출)
      */
     public static Message create(String content, User sender, ChatRoom chatRoom) {
+        // 기본 검증 먼저 수행
+        validateContent(content);
+        validateSender(sender);
+        validateChatRoom(chatRoom);
+        
         // 채팅방 참여자인지 검증
         if (!chatRoom.isParticipantById(sender.getId())) {
             throw new IllegalStateException("채팅방 참여자만 메시지를 보낼 수 있습니다");

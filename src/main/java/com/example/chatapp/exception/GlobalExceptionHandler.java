@@ -116,23 +116,33 @@ public class GlobalExceptionHandler {
     
     /**
      * IllegalArgumentException 처리
-     * 주의: Spring 내부에서도 발생할 수 있으므로 신중히 처리
+     * 도메인 서비스에서 발생하는 검증 오류를 적절한 ErrorCode로 매핑
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
             IllegalArgumentException e, HttpServletRequest request) {
         
-        log.error("Illegal argument - Message: {}, Path: {}", 
-            e.getMessage(), request.getRequestURI(), e);
+        // 메시지 기반으로 적절한 ErrorCode 결정
+        ErrorCode errorCode = mapMessageToErrorCode(e.getMessage());
+        HttpStatus status = errorCode.getHttpStatus();
+        
+        // HTTP 상태에 따른 로그 레벨 설정
+        if (status.is4xxClientError()) {
+            log.warn("Client error - Code: {}, Message: {}, Path: {}", 
+                errorCode.getCode(), e.getMessage(), request.getRequestURI());
+        } else {
+            log.error("Server error - Code: {}, Message: {}, Path: {}", 
+                errorCode.getCode(), e.getMessage(), request.getRequestURI(), e);
+        }
         
         ErrorResponse error = ErrorResponse.builder()
-            .errorCode(ErrorCode.VALIDATION_ERROR.getCode())
-            .status(ErrorCode.VALIDATION_ERROR.getStatus())
+            .errorCode(errorCode.getCode())
+            .status(errorCode.getStatus())
             .message(e.getMessage())
             .timestamp(LocalDateTime.now())
             .build();
             
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(error, errorCode.getHttpStatus());
     }
     
     /**
@@ -153,5 +163,34 @@ public class GlobalExceptionHandler {
             .build();
             
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    
+    /**
+     * 메시지 기반으로 적절한 ErrorCode 매핑
+     */
+    private ErrorCode mapMessageToErrorCode(String message) {
+        if (message == null) {
+            return ErrorCode.VALIDATION_ERROR;
+        }
+        
+        // 도메인 서비스에서 발생하는 메시지 패턴 매칭
+        if (message.contains("초대 권한이 없습니다")) {
+            return ErrorCode.CHATROOM_PERMISSION_DENIED;
+        }
+        if (message.contains("관리자 권한이 필요합니다")) {
+            return ErrorCode.CHATROOM_ADMIN_REQUIRED;
+        }
+        if (message.contains("이미 채팅방에 참여한 사용자입니다")) {
+            return ErrorCode.CHATROOM_ALREADY_JOINED;
+        }
+        if (message.contains("채팅방에 참여하지 않은 사용자입니다")) {
+            return ErrorCode.CHATROOM_NOT_PARTICIPANT;
+        }
+        if (message.contains("채팅방 참여자 수가 한계에 도달했습니다")) {
+            return ErrorCode.VALIDATION_ERROR;
+        }
+        
+        // 기본값
+        return ErrorCode.VALIDATION_ERROR;
     }
 }

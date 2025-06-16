@@ -6,11 +6,9 @@ import com.example.chatapp.dto.request.ChatRoomJoinRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.dto.response.ParticipantResponse;
-import com.example.chatapp.config.WebFilterConfig;
 import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.infrastructure.auth.AuthContext;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
-import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
 import com.example.chatapp.service.ChatRoomService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -37,7 +35,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = {ChatRoomController.class}, 
+@WebMvcTest(controllers = {ChatRoomController.class},
     includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
 @AutoConfigureMockMvc(addFilters = false)
 class ChatRoomControllerTest {

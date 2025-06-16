@@ -1,10 +1,8 @@
 package com.example.chatapp.controller;
 
-import com.example.chatapp.config.WebFilterConfig;
 import com.example.chatapp.dto.response.UserResponse;
 import com.example.chatapp.exception.GlobalExceptionHandler;
 import com.example.chatapp.infrastructure.auth.JwtTokenProvider;
-import com.example.chatapp.infrastructure.filter.SessionAuthenticationFilter;
 import com.example.chatapp.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +24,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(controllers = {UserController.class}, 
+@WebMvcTest(controllers = {UserController.class},
     includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
 @AutoConfigureMockMvc(addFilters = false)
 public class UserControllerTest {

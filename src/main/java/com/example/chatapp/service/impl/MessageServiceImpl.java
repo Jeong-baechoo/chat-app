@@ -8,7 +8,10 @@ import com.example.chatapp.exception.MessageException;
 import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.MessageMapper;
 import com.example.chatapp.repository.MessageRepository;
-import com.example.chatapp.service.EntityFinderService;
+import com.example.chatapp.repository.UserRepository;
+import com.example.chatapp.repository.ChatRoomRepository;
+import com.example.chatapp.exception.UserException;
+import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +35,8 @@ public class MessageServiceImpl implements MessageService {
     private final MessageRepository messageRepository;
     private final MessageDomainService messageDomainService;
     private final MessageMapper messageMapper;
-    private final EntityFinderService entityFinder;
+    private final UserRepository userRepository;
+    private final ChatRoomRepository chatRoomRepository;
     private final ChatEventPublisherService eventPublisher;
 
     /**
@@ -47,8 +51,10 @@ public class MessageServiceImpl implements MessageService {
     @Transactional
     public void sendMessage(MessageCreateRequest request, Long senderId) {
         // 엔티티 조회
-        User sender = entityFinder.findUserById(senderId);
-        ChatRoom chatRoom = entityFinder.findChatRoomById(request.getChatRoomId());
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> UserException.notFound(senderId));
+        ChatRoom chatRoom = chatRoomRepository.findById(request.getChatRoomId())
+                .orElseThrow(() -> ChatRoomException.notFound(request.getChatRoomId()));
 
         // 메시지 생성 (도메인에서 참여자 검증 수행)
         Message message = Message.create(request.getContent(), sender, chatRoom);
@@ -70,7 +76,9 @@ public class MessageServiceImpl implements MessageService {
      */
     @Override
     public Page<MessageResponse> findChatRoomMessages(Long chatRoomId, Pageable pageable) {
-        entityFinder.validateChatRoomExists(chatRoomId);
+        if (!chatRoomRepository.existsById(chatRoomId)) {
+            throw ChatRoomException.notFound(chatRoomId);
+        }
         return messageRepository.findByChatRoomIdOrderByTimestampDesc(chatRoomId, pageable)
                 .map(messageMapper::toResponse);
     }
@@ -84,7 +92,9 @@ public class MessageServiceImpl implements MessageService {
      */
     @Override
     public List<MessageResponse> findRecentChatRoomMessages(Long chatRoomId, int limit) {
-        entityFinder.validateChatRoomExists(chatRoomId);
+        if (!chatRoomRepository.existsById(chatRoomId)) {
+            throw ChatRoomException.notFound(chatRoomId);
+        }
         // 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
         List<Message> messages = messageRepository.findTopByChatRoomIdWithSenderAndRoomOrderByTimestampDesc(chatRoomId, limit);
 
@@ -105,7 +115,8 @@ public class MessageServiceImpl implements MessageService {
      */
     @Override
     public MessageResponse findMessageById(Long id) {
-        Message message = entityFinder.findMessageById(id);
+        Message message = messageRepository.findById(id)
+                .orElseThrow(() -> MessageException.notFound(id));
         return messageMapper.toResponse(message);
     }
 
@@ -121,8 +132,10 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public MessageResponse updateMessageStatus(Long messageId, Long userId, MessageStatus status) {
-        Message message = entityFinder.findMessageById(messageId);
-        User user = entityFinder.findUserById(userId);
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> MessageException.notFound(messageId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.notFound(userId));
 
         // 권한 확인
         if (!messageDomainService.canUserUpdateMessage(user, message)) {
@@ -147,7 +160,9 @@ public class MessageServiceImpl implements MessageService {
      */
     @Override
     public Page<MessageResponse> findMessagesBySender(Long senderId, Pageable pageable) {
-        entityFinder.validateUserExists(senderId);
+        if (!userRepository.existsById(senderId)) {
+            throw UserException.notFound(senderId);
+        }
         // 최적화된 쿼리 사용 (FETCH JOIN으로 N+1 문제 해결)
         return messageRepository.findBySenderIdWithSenderAndRoomOrderByTimestampDesc(senderId, pageable)
                 .map(messageMapper::toResponse);
@@ -163,8 +178,10 @@ public class MessageServiceImpl implements MessageService {
     @Override
     @Transactional
     public void deleteMessage(Long id, Long userId) {
-        Message message = entityFinder.findMessageById(id);
-        User user = entityFinder.findUserById(userId);
+        Message message = messageRepository.findById(id)
+                .orElseThrow(() -> MessageException.notFound(id));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.notFound(userId));
 
         messageDomainService.validateDeletePermission(user, message, message.getChatRoom());
 

@@ -32,6 +32,7 @@ public enum ErrorCode {
     CHATROOM_ALREADY_JOINED("CHATROOM_ALREADY_JOINED", HttpStatus.BAD_REQUEST, "이미 참여 중인 채팅방입니다"),
     CHATROOM_NOT_PARTICIPANT("CHATROOM_NOT_PARTICIPANT", HttpStatus.BAD_REQUEST, "채팅방 참여자가 아닙니다"),
     CHATROOM_ADMIN_REQUIRED("CHATROOM_ADMIN_REQUIRED", HttpStatus.FORBIDDEN, "채팅방 관리자 권한이 필요합니다"),
+    CHATROOM_PERMISSION_DENIED("CHATROOM_PERMISSION_DENIED", HttpStatus.FORBIDDEN, "채팅방 초대 권한이 없습니다"),
     
     // 메시지 관련 에러
     MESSAGE_NOT_FOUND("MESSAGE_NOT_FOUND", HttpStatus.NOT_FOUND, "메시지를 찾을 수 없습니다"),

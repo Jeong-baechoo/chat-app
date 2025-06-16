@@ -1,7 +1,7 @@
 package com.example.chatapp.domain.service;
 
 import com.example.chatapp.domain.*;
-import com.example.chatapp.exception.MessageException;
+import com.example.chatapp.domain.exception.MessageDomainException;
 import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -83,8 +83,8 @@ class MessageDomainServiceTest {
     }
 
     private Message createTestMessage(Long id, String content, User sender, ChatRoom chatRoom) {
-        // 도메인 서비스를 통해 메시지 생성
-        Message message = messageDomainService.createMessage(content, sender, chatRoom);
+        // Message.create 정적 팩토리 메서드를 사용해 메시지 생성
+        Message message = Message.create(content, sender, chatRoom);
         setIdUsingReflection(message, id);
         return message;
     }
@@ -103,30 +103,6 @@ class MessageDomainServiceTest {
         }
     }
 
-    @Test
-    @DisplayName("사용자가 메시지를 전송할 수 있는지 확인 - 참여자인 경우")
-    void givenUserIsParticipant_whenCheckCanSendMessage_thenReturnTrue() {
-        // Given: 참여자인 사용자
-        when(chatRoomParticipantRepository.existsByUserAndChatRoom(user, chatRoom)).thenReturn(true);
-
-        // When: 메시지 전송 권한 확인
-        boolean result = messageDomainService.canUserSendMessage(user, chatRoom);
-
-        // Then: 참여자이므로 true 반환
-        assertTrue(result, "채팅방 참여자는 메시지를 전송할 수 있어야 합니다");
-    }
-
-    @Test
-    @DisplayName("사용자가 메시지를 전송할 수 있는지 확인 - 참여자가 아닌 경우")
-    void givenUserIsNotParticipant_whenCheckCanSendMessage_thenReturnFalse() {
-        // Given: 참여자가 아닌 사용자 (setUp에서 설정됨)
-
-        // When: 메시지 전송 권한 확인
-        boolean result = messageDomainService.canUserSendMessage(otherUser, chatRoom);
-
-        // Then: 참여자가 아니므로 false 반환
-        assertFalse(result, "채팅방 참여자가 아닌 사용자는 메시지를 전송할 수 없어야 합니다");
-    }
 
     @Test
     @DisplayName("사용자가 메시지를 업데이트할 수 있는지 확인 - 발신자인 경우")
@@ -204,39 +180,9 @@ class MessageDomainServiceTest {
         // Given: 권한이 없는 사용자 (setUp에서 설정됨)
 
         // When & Then: 권한 검증 시 예외 발생
-        assertThrows(MessageException.class,
+        assertThrows(MessageDomainException.class,
                 () -> messageDomainService.validateDeletePermission(otherUser, message, chatRoom),
                 "권한이 없는 사용자가 메시지 삭제 시 예외가 발생해야 합니다");
     }
 
-    @Test
-    @DisplayName("새 메시지 생성 테스트")
-    void givenMessageData_whenCreateMessage_thenReturnValidMessage() {
-        // Given: 메시지 내용, 발신자, 채팅방
-        String content = "새 메시지";
-
-        // When: 메시지 생성
-        Message result = messageDomainService.createMessage(content, user, chatRoom);
-
-        // Then: 생성된 메시지 검증
-        assertNotNull(result, "생성된 메시지는 null이 아니어야 합니다");
-        assertEquals(content, result.getContent(), "메시지 내용이 일치해야 합니다");
-        assertEquals(user, result.getSender(), "발신자가 일치해야 합니다");
-        assertEquals(chatRoom, result.getChatRoom(), "채팅방이 일치해야 합니다");
-        assertEquals(MessageStatus.SENT, result.getStatus(), "초기 상태는 SENT여야 합니다");
-        assertNotNull(result.getTimestamp(), "타임스탬프가 설정되어야 합니다");
-    }
-
-    @Test
-    @DisplayName("메시지 상태 업데이트 테스트")
-    void givenMessageAndStatus_whenUpdateMessageStatus_thenStatusUpdated() {
-        // Given: 메시지와 새 상태
-        MessageStatus newStatus = MessageStatus.READ;
-
-        // When: 메시지 상태 업데이트
-        Message result = messageDomainService.updateMessageStatus(message, newStatus);
-
-        // Then: 업데이트된 상태 검증
-        assertEquals(newStatus, result.getStatus(), "메시지 상태가 올바르게 업데이트되어야 합니다");
-    }
 }

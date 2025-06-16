@@ -9,9 +9,8 @@ import com.example.chatapp.exception.ChatRoomException;
 import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.ChatRoomMapper;
-import com.example.chatapp.repository.ChatRoomParticipantRepository;
 import com.example.chatapp.repository.ChatRoomRepository;
-import com.example.chatapp.service.EntityFinderService;
+import com.example.chatapp.repository.UserRepository;
 import com.example.chatapp.service.impl.ChatRoomServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,8 +49,6 @@ class ChatRoomServiceTest {
     @Mock
     private ChatRoomRepository chatRoomRepository;
 
-    @Mock
-    private ChatRoomParticipantRepository participantRepo;
 
     @Mock
     private ChatRoomMapper chatRoomMapper;
@@ -60,7 +57,7 @@ class ChatRoomServiceTest {
     private ChatEventPublisherService eventPublisher;
 
     @Mock
-    private EntityFinderService entityFinderService;
+    private UserRepository userRepository;
 
     @Mock
     private ChatRoomDomainService chatRoomDomainService;
@@ -153,10 +150,9 @@ class ChatRoomServiceTest {
             createDTO.setType(ChatRoomType.GROUP);
             createDTO.setCreatorId(USER_ID);
 
-            when(entityFinderService.findUserById(USER_ID)).thenReturn(testUser);
-            when(chatRoomDomainService.createChatRoom(NEW_ROOM_NAME, ChatRoomType.GROUP, testUser))
-                    .thenReturn(testChatRoom);
-            when(chatRoomRepository.save(testChatRoom)).thenReturn(testChatRoom);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
+            // ChatRoom.create is called directly in the service
+            when(chatRoomRepository.save(any(ChatRoom.class))).thenReturn(testChatRoom);
             when(chatRoomMapper.toResponse(testChatRoom)).thenReturn(testChatRoomResponse);
 
             // When
@@ -168,9 +164,8 @@ class ChatRoomServiceTest {
             assertThat(result.getName()).isEqualTo(TEST_ROOM_NAME);
 
             // 검증
-            verify(entityFinderService).findUserById(USER_ID);
-            verify(chatRoomDomainService).createChatRoom(NEW_ROOM_NAME, ChatRoomType.GROUP, testUser);
-            verify(chatRoomRepository).save(testChatRoom);
+            verify(userRepository).findById(USER_ID);
+            verify(chatRoomRepository).save(any(ChatRoom.class));
             verify(eventPublisher).publishRoomCreatedEvent(testChatRoom, testUser);
             verify(chatRoomMapper).toResponse(testChatRoom);
         }
@@ -184,16 +179,15 @@ class ChatRoomServiceTest {
             createDTO.setType(ChatRoomType.GROUP);
             createDTO.setCreatorId(NONEXISTENT_ID);
 
-            when(entityFinderService.findUserById(NONEXISTENT_ID))
-                    .thenThrow(new UserException(ERROR_USER_NOT_FOUND));
+            when(userRepository.findById(NONEXISTENT_ID))
+                    .thenReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> chatRoomService.createChatRoom(createDTO))
                     .isInstanceOf(UserException.class)
                     .hasMessage(ERROR_USER_NOT_FOUND);
 
-            verify(entityFinderService).findUserById(NONEXISTENT_ID);
-            verify(chatRoomDomainService, never()).createChatRoom(any(), any(), any());
+            verify(userRepository).findById(NONEXISTENT_ID);
             verify(chatRoomRepository, never()).save(any());
             verify(eventPublisher, never()).publishRoomCreatedEvent(any(), any());
         }
@@ -211,9 +205,8 @@ class ChatRoomServiceTest {
             User newUser = createTestUser(newUserId, "newuser");
 
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(entityFinderService.findUserById(newUserId)).thenReturn(newUser);
-            when(participantRepo.existsByUserIdAndChatRoomId(newUserId, CHAT_ROOM_ID))
-                    .thenReturn(false);
+            when(userRepository.findById(newUserId)).thenReturn(Optional.of(newUser));
+            // testChatRoom.isParticipantById will return false since newUser is not added yet
             when(chatRoomMapper.toResponse(testChatRoom)).thenReturn(testChatRoomResponse);
 
             // When
@@ -225,8 +218,7 @@ class ChatRoomServiceTest {
 
             // 검증
             verify(chatRoomRepository).findById(CHAT_ROOM_ID);
-            verify(entityFinderService).findUserById(newUserId);
-            verify(participantRepo).existsByUserIdAndChatRoomId(newUserId, CHAT_ROOM_ID);
+            verify(userRepository).findById(newUserId);
             verify(chatRoomDomainService).joinChatRoom(testChatRoom, newUser);
             verify(eventPublisher).publishUserJoinEvent(CHAT_ROOM_ID, newUser);
             verify(chatRoomMapper).toResponse(testChatRoom);
@@ -236,10 +228,11 @@ class ChatRoomServiceTest {
         @DisplayName("이미 참여한 사용자를 추가할 때 중복 추가되지 않아야 함")
         void givenExistingParticipant_whenAddParticipant_thenNoNewParticipantAdded() {
             // Given
+            // Set up the chat room to have the user as a participant
+            setField(testChatRoom, "participants", new java.util.HashSet<>(java.util.Set.of(testParticipant)));
+            
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(entityFinderService.findUserById(USER_ID)).thenReturn(testUser);
-            when(participantRepo.existsByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID))
-                    .thenReturn(true);
+            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(testUser));
             when(chatRoomMapper.toResponse(testChatRoom)).thenReturn(testChatRoomResponse);
 
             // When
@@ -278,16 +271,16 @@ class ChatRoomServiceTest {
         @DisplayName("관리자 사용자가 채팅방 삭제 시 채팅방이 삭제되어야 함")
         void givenAdminUser_whenDeleteChatRoom_thenChatRoomDeleted() {
             // Given
+            // Set up the chat room to have the admin as a participant
+            setField(testChatRoom, "participants", new java.util.HashSet<>(java.util.Set.of(adminParticipant)));
+            
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(participantRepo.findByUserIdAndChatRoomId(ADMIN_ID, CHAT_ROOM_ID))
-                    .thenReturn(Optional.of(adminParticipant));
 
             // When
             chatRoomService.deleteChatRoom(CHAT_ROOM_ID, ADMIN_ID);
 
             // Then
             verify(chatRoomRepository).findById(CHAT_ROOM_ID);
-            verify(participantRepo).findByUserIdAndChatRoomId(ADMIN_ID, CHAT_ROOM_ID);
             verify(chatRoomRepository).delete(testChatRoom);
         }
 
@@ -310,9 +303,10 @@ class ChatRoomServiceTest {
         @DisplayName("일반 사용자가 채팅방 삭제 시 권한 예외가 발생해야 함")
         void givenNonAdminUser_whenDeleteChatRoom_thenThrowChatRoomException() {
             // Given
+            // Set up the chat room to have the user as a non-admin participant
+            setField(testChatRoom, "participants", new java.util.HashSet<>(java.util.Set.of(testParticipant)));
+            
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(participantRepo.findByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID))
-                    .thenReturn(Optional.of(testParticipant));
 
             // When & Then
             assertThatThrownBy(() -> chatRoomService.deleteChatRoom(CHAT_ROOM_ID, USER_ID))
@@ -320,7 +314,6 @@ class ChatRoomServiceTest {
                     .hasMessage(ERROR_NO_DELETE_PERMISSION);
 
             verify(chatRoomRepository).findById(CHAT_ROOM_ID);
-            verify(participantRepo).findByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID);
             verify(chatRoomRepository, never()).delete(any());
         }
 
@@ -328,9 +321,10 @@ class ChatRoomServiceTest {
         @DisplayName("참여하지 않은 사용자가 채팅방 삭제 시 권한 예외가 발생해야 함")
         void givenNonParticipantUser_whenDeleteChatRoom_thenThrowChatRoomException() {
             // Given
+            // Set up the chat room without the user as a participant
+            setField(testChatRoom, "participants", new java.util.HashSet<>());
+            
             when(chatRoomRepository.findById(CHAT_ROOM_ID)).thenReturn(Optional.of(testChatRoom));
-            when(participantRepo.findByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID))
-                    .thenReturn(Optional.empty());
 
             // When & Then
             assertThatThrownBy(() -> chatRoomService.deleteChatRoom(CHAT_ROOM_ID, USER_ID))
@@ -338,7 +332,6 @@ class ChatRoomServiceTest {
                     .hasMessage(ERROR_NO_DELETE_PERMISSION);
 
             verify(chatRoomRepository).findById(CHAT_ROOM_ID);
-            verify(participantRepo).findByUserIdAndChatRoomId(USER_ID, CHAT_ROOM_ID);
             verify(chatRoomRepository, never()).delete(any());
         }
     }
@@ -354,7 +347,7 @@ class ChatRoomServiceTest {
             List<ChatRoom> userChatRooms = List.of(testChatRoom);
             List<ChatRoomResponse> expectedResponses = List.of(testChatRoomResponse);
 
-            doNothing().when(entityFinderService).validateUserExists(USER_ID);
+            when(userRepository.existsById(USER_ID)).thenReturn(true);
             when(chatRoomRepository.findAllByParticipantUserId(USER_ID)).thenReturn(userChatRooms);
             when(chatRoomMapper.toResponse(testChatRoom)).thenReturn(testChatRoomResponse);
 
@@ -366,7 +359,7 @@ class ChatRoomServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getId()).isEqualTo(CHAT_ROOM_ID);
 
-            verify(entityFinderService).validateUserExists(USER_ID);
+            verify(userRepository).existsById(USER_ID);
             verify(chatRoomRepository).findAllByParticipantUserId(USER_ID);
             verify(chatRoomMapper).toResponse(testChatRoom);
         }

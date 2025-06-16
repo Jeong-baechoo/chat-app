@@ -6,11 +6,12 @@ import com.example.chatapp.dto.request.ChatRoomCreateRequest;
 import com.example.chatapp.dto.response.ChatRoomResponse;
 import com.example.chatapp.dto.response.ChatRoomSimpleResponse;
 import com.example.chatapp.exception.ChatRoomException;
+import com.example.chatapp.exception.UserException;
 import com.example.chatapp.infrastructure.event.ChatEventPublisherService;
 import com.example.chatapp.mapper.ChatRoomMapper;
 import com.example.chatapp.repository.ChatRoomRepository;
 import com.example.chatapp.service.ChatRoomService;
-import com.example.chatapp.service.EntityFinderService;
+import com.example.chatapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,14 +29,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomMapper chatRoomMapper;
     private final ChatEventPublisherService chatEventPublisherService;
-    private final EntityFinderService entityFinderService;
+    private final UserRepository userRepository;
     private final ChatRoomDomainService chatRoomDomainService;
 
     @Override
     @Transactional
     public ChatRoomResponse createChatRoom(ChatRoomCreateRequest request) {
         // 먼저 사용자 존재 여부 확인
-        User creator = findUserById(request.getCreatorId());
+        User creator = userRepository.findById(request.getCreatorId())
+                .orElseThrow(() -> UserException.notFound(request.getCreatorId()));
 
         // 채팅방 생성 (도메인 엔티티의 정적 팩토리 메서드 사용)
         ChatRoom chatRoom = ChatRoom.create(
@@ -74,7 +76,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     public List<ChatRoomResponse> findChatRoomsByUser(Long userId) {
-        validateUserExists(userId);
+        if (!userRepository.existsById(userId)) {
+            throw UserException.notFound(userId);
+        }
         List<ChatRoom> rooms = chatRoomRepository.findAllByParticipantUserId(userId);
         return mapChatRoomsToResponses(rooms);
     }
@@ -82,8 +86,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     @Transactional
     public ChatRoomResponse addParticipantToChatRoom(Long chatRoomId, Long userId) {
-        ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
-        User user = findUserById(userId);
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> ChatRoomException.notFound(chatRoomId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.notFound(userId));
 
         // 이미 참여한 사용자인지 도메인에서 확인
         if (!chatRoom.isParticipantById(userId)) {
@@ -99,8 +105,31 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     @Transactional
+    public ChatRoomResponse inviteUserToChatRoom(Long chatRoomId, Long userToInviteId, Long inviterId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> ChatRoomException.notFound(chatRoomId));
+        User userToInvite = userRepository.findById(userToInviteId)
+                .orElseThrow(() -> UserException.notFound(userToInviteId));
+        User inviter = userRepository.findById(inviterId)
+                .orElseThrow(() -> UserException.notFound(inviterId));
+
+        // 도메인 서비스를 통한 초대 (관리자 권한 검증 포함)
+        chatRoomDomainService.inviteUser(chatRoom, userToInvite, inviter);
+
+        // 초대 이벤트 발행
+        chatEventPublisherService.publishUserJoinEvent(chatRoomId, userToInvite);
+
+        log.info("사용자를 채팅방에 초대했습니다: inviterId={}, invitedUserId={}, chatRoomId={}", 
+                inviterId, userToInviteId, chatRoomId);
+        
+        return chatRoomMapper.toResponse(chatRoom);
+    }
+
+    @Override
+    @Transactional
     public void deleteChatRoom(Long chatRoomId, Long userId) {
-        ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> ChatRoomException.notFound(chatRoomId));
 
         // 도메인에서 권한 검증
         chatRoom.validateCanDelete(userId);
@@ -114,8 +143,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     @Transactional
     public ChatRoomResponse removeParticipantFromChatRoom(Long chatRoomId, Long userId) {
-        ChatRoom chatRoom = findChatRoomByIdOrThrow(chatRoomId);
-        User user = findUserById(userId);
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(() -> ChatRoomException.notFound(chatRoomId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.notFound(userId));
 
         // 참가자로 등록되어 있는지 도메인에서 확인
         if (!chatRoom.isParticipantById(userId)) {
@@ -133,20 +164,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     // 내부 헬퍼 메소드
-
-
-    private ChatRoom findChatRoomByIdOrThrow(Long chatRoomId) {
-        return entityFinderService.findChatRoomById(chatRoomId);
-    }
-
-    private User findUserById(Long userId) {
-        return entityFinderService.findUserById(userId);
-    }
-
-    private void validateUserExists(Long userId) {
-        entityFinderService.validateUserExists(userId);
-    }
-
 
     private List<ChatRoomResponse> mapChatRoomsToResponses(List<ChatRoom> rooms) {
         // 적은 양의 데이터를 처리할 때는 스트림 대신 반복문 사용

@@ -5,7 +5,6 @@ import com.example.chatapp.domain.Message;
 import com.example.chatapp.infrastructure.message.ChatEvent;
 import com.example.chatapp.infrastructure.message.ChatEventType;
 import com.example.chatapp.repository.MessageRepository;
-import com.example.chatapp.service.EntityFinderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -29,7 +28,6 @@ import java.util.stream.Collectors;
 public class MessagePersistenceConsumer {
 
     private final MessageRepository messageRepository;
-    private final EntityFinderService entityFinderService;
 
 //    @KafkaListener(
 //        topics = KafkaConfig.CHAT_MESSAGES_TOPIC,

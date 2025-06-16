@@ -371,7 +371,6 @@ public void sendMessage(MessageCreateRequest request, Long senderId) {
 - ChatRoomServiceImpl: `validateUserIsRoomAdmin()` 메서드 제거
 - MessageServiceImpl: `validateAndGetParticipant()` 메서드 및 ChatRoomParticipantRepository 의존성 제거
 - AuthService: `getUserById()` 중복 메서드 제거
-- UserServiceImpl: 직접적인 Repository 조회를 EntityFinderService로 통일
 
 ## 결론
 
